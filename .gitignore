@@ -1,0 +1,17 @@
+# Engine-generated / build artifacts
+Binaries/
+Intermediate/
+DerivedDataCache/
+Saved/
+.vs/
+*.VC.db
+*.sln
+*.xcodeproj
+*.xcworkspace
+
+# Content is versioned separately (LFS / Diversion / Perforce) — not this repo yet
+Content/
+
+# OS / editor cruft
+.idea/
+*.user

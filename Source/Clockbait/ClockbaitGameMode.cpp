@@ -1,0 +1,35 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "ClockbaitGameMode.h"
+#include "GameFramework/PlayerStart.h"
+#include "Kismet/GameplayStatics.h"
+#include "Clockbait.h"
+
+AClockbaitGameMode::AClockbaitGameMode()
+{
+	// stub
+}
+
+AActor* AClockbaitGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+	TArray<AActor*> PlayerStarts;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), PlayerStarts);
+
+	if (PlayerStarts.Num() == 0)
+	{
+		return Super::ChoosePlayerStart_Implementation(Player);
+	}
+
+	AActor* ChosenStart = PlayerStarts[NextPlayerStartIndex % PlayerStarts.Num()];
+	NextPlayerStartIndex++;
+
+	return ChosenStart;
+}
+
+void AClockbaitGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	UE_LOG(LogClockbait, Log, TEXT("PostLogin: '%s' connected. Total connected players: %d"),
+		*GetNameSafe(NewPlayer), GetNumPlayers());
+}
