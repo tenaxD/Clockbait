@@ -54,7 +54,15 @@ protected:
 public:
 	AClockbaitCharacter();
 
+	/** Requests the server to activate an alarm target hit by the local player's line trace */
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Alarm")
+	void ServerActivateAlarm(AActor* AlarmTarget);
+
 protected:
+
+	/** Implemented in Blueprint: runs on the server, contains the cooldown-check + Activate logic */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Alarm")
+	void OnServerActivateAlarm(AActor* AlarmTarget);
 
 	/** Called from Input Actions for movement input */
 	void MoveInput(const FInputActionValue& Value);

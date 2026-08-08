@@ -68,6 +68,11 @@ void AClockbaitCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 }
 
 
+void AClockbaitCharacter::ServerActivateAlarm_Implementation(AActor* AlarmTarget)
+{
+	OnServerActivateAlarm(AlarmTarget);
+}
+
 void AClockbaitCharacter::MoveInput(const FInputActionValue& Value)
 {
 	// get the Vector2D move axis
