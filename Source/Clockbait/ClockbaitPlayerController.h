@@ -24,7 +24,15 @@ public:
 	/** Constructor */
 	AClockbaitPlayerController();
 
+	/** Server calls this on each player's controller to tell their client to show the game over screen */
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "GameOver")
+	void ClientShowGameOver();
+
 protected:
+
+	/** Implemented in Blueprint: runs on this client, shows WBP_LossScreen / existing game over logic */
+	UFUNCTION(BlueprintImplementableEvent, Category = "GameOver")
+	void OnGameOver();
 
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")

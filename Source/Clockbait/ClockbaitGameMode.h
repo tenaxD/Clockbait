@@ -17,6 +17,10 @@ class AClockbaitGameMode : public AGameModeBase
 public:
 	AClockbaitGameMode();
 
+	/** Call (server-side) when the entity catches a player. Shows game over for every player, then resets the level for the whole session. */
+	UFUNCTION(BlueprintCallable, Category = "GameOver")
+	void NotifyPlayerCaught(APawn* CaughtPawn);
+
 protected:
 
 	/** Distributes joining players across available PlayerStart actors instead of stacking them on one */
@@ -25,9 +29,19 @@ protected:
 	/** Logs player connections so possession can be verified in the Output Log during PIE testing */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
+	/** How long to show the game over screen before the level resets for everyone */
+	UPROPERTY(EditDefaultsOnly, Category = "GameOver", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float GameOverResetDelay = 4.0f;
+
 private:
 
 	int32 NextPlayerStartIndex = 0;
+
+	bool bGameOverTriggered = false;
+
+	FTimerHandle GameOverResetTimerHandle;
+
+	void ResetLevel();
 };
 
 

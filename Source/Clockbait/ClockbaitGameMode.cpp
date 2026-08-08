@@ -3,6 +3,7 @@
 #include "ClockbaitGameMode.h"
 #include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
+#include "ClockbaitPlayerController.h"
 #include "Clockbait.h"
 
 AClockbaitGameMode::AClockbaitGameMode()
@@ -32,4 +33,31 @@ void AClockbaitGameMode::PostLogin(APlayerController* NewPlayer)
 
 	UE_LOG(LogClockbait, Log, TEXT("PostLogin: '%s' connected. Total connected players: %d"),
 		*GetNameSafe(NewPlayer), GetNumPlayers());
+}
+
+void AClockbaitGameMode::NotifyPlayerCaught(APawn* CaughtPawn)
+{
+	if (bGameOverTriggered)
+	{
+		return;
+	}
+	bGameOverTriggered = true;
+
+	UE_LOG(LogClockbait, Log, TEXT("NotifyPlayerCaught: '%s' was caught. Triggering game over for all players."),
+		*GetNameSafe(CaughtPawn));
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AClockbaitPlayerController* PlayerController = Cast<AClockbaitPlayerController>(It->Get()))
+		{
+			PlayerController->ClientShowGameOver();
+		}
+	}
+
+	GetWorldTimerManager().SetTimer(GameOverResetTimerHandle, this, &AClockbaitGameMode::ResetLevel, GameOverResetDelay, false);
+}
+
+void AClockbaitGameMode::ResetLevel()
+{
+	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this, true)));
 }

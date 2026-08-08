@@ -41,6 +41,11 @@ void AClockbaitPlayerController::BeginPlay()
 	}
 }
 
+void AClockbaitPlayerController::ClientShowGameOver_Implementation()
+{
+	OnGameOver();
+}
+
 void AClockbaitPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
