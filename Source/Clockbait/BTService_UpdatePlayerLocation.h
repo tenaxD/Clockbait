@@ -11,6 +11,10 @@ struct FBTUpdatePlayerLocationMemory
 {
 	TWeakObjectPtr<AActor> LockedTarget;
 	float TimeSinceLostSight = 0.0f;
+
+	// Set once a "RoomVolume Blackboard key not configured" warning has been logged for this AI instance,
+	// so the fallback-to-global-tracking case doesn't spam the log every tick.
+	bool bLoggedMissingRoomVolume = false;
 };
 
 /**
@@ -39,4 +43,12 @@ protected:
 	/** How long the AI keeps chasing a player it can no longer perceive before giving up on them */
 	UPROPERTY(EditAnywhere, Category = "Perception", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float LoseTargetDelay = 3.0f;
+
+	/** Search extent used to snap a tracked player location onto the NavMesh, so LastKnownPlayerLocation is never an unreachable off-mesh point (e.g. a doorway threshold) */
+	UPROPERTY(EditAnywhere, Category = "Perception")
+	FVector NavProjectionExtent = FVector(200.0f, 200.0f, 500.0f);
+
+private:
+	/** Projects Location onto the NavMesh using AIController's nav agent. Returns false (leaving OutProjectedLocation untouched) if no nearby NavMesh point was found. */
+	bool ProjectToNavMesh(const AAIController& AIController, const FVector& Location, FVector& OutProjectedLocation) const;
 };

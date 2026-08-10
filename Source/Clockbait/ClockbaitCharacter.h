@@ -54,15 +54,35 @@ protected:
 public:
 	AClockbaitCharacter();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	/** Requests the server to activate an alarm target hit by the local player's line trace */
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Alarm")
 	void ServerActivateAlarm(AActor* AlarmTarget);
+
+	/** Server-only: called by AHidingSpot when this player enters/exits a hiding spot. Not an RPC itself, hiding spots already validate over their own RPCs. */
+	UFUNCTION(BlueprintCallable, Category = "Hiding")
+	void SetHiddenFromAI(bool bNewHiddenFromAI);
+
+	bool IsHiddenFromAI() const { return bIsHiddenFromAI; }
 
 protected:
 
 	/** Implemented in Blueprint: runs on the server, contains the cooldown-check + Activate logic */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Alarm")
 	void OnServerActivateAlarm(AActor* AlarmTarget);
+
+	/** Implemented in Blueprint: runs on every client (including the owner), for hiding cosmetics (crouch pose, mesh visibility, etc.) */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Hiding")
+	void OnHiddenFromAIChanged(bool bNewHiddenFromAI);
+
+	UFUNCTION()
+	void OnRep_IsHiddenFromAI();
+
+	// Whether this player is currently tucked away in a hiding spot and should be excluded from AI perception.
+	// Replicated (not just server-side) so OnHiddenFromAIChanged can drive cosmetics on every client, not just the server.
+	UPROPERTY(ReplicatedUsing = OnRep_IsHiddenFromAI)
+	bool bIsHiddenFromAI = false;
 
 	/** Called from Input Actions for movement input */
 	void MoveInput(const FInputActionValue& Value);

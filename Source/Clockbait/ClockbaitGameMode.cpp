@@ -4,11 +4,12 @@
 #include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
 #include "ClockbaitPlayerController.h"
+#include "ClockbaitGameState.h"
 #include "Clockbait.h"
 
 AClockbaitGameMode::AClockbaitGameMode()
 {
-	// stub
+	GameStateClass = AClockbaitGameState::StaticClass();
 }
 
 AActor* AClockbaitGameMode::ChoosePlayerStart_Implementation(AController* Player)

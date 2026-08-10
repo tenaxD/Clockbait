@@ -8,6 +8,7 @@
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Clockbait.h"
 
 AClockbaitCharacter::AClockbaitCharacter()
@@ -71,6 +72,37 @@ void AClockbaitCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 void AClockbaitCharacter::ServerActivateAlarm_Implementation(AActor* AlarmTarget)
 {
 	OnServerActivateAlarm(AlarmTarget);
+}
+
+void AClockbaitCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AClockbaitCharacter, bIsHiddenFromAI);
+}
+
+void AClockbaitCharacter::SetHiddenFromAI(bool bNewHiddenFromAI)
+{
+	// Only the server may change this - it directly controls what BTService_UpdatePlayerLocation
+	// considers perceivable, so an unvalidated client call here would let players make themselves
+	// permanently invisible to AI.
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (bIsHiddenFromAI == bNewHiddenFromAI)
+	{
+		return;
+	}
+
+	bIsHiddenFromAI = bNewHiddenFromAI;
+	OnRep_IsHiddenFromAI(); // OnRep only fires on clients; call it manually so the server also runs the cosmetic event
+}
+
+void AClockbaitCharacter::OnRep_IsHiddenFromAI()
+{
+	OnHiddenFromAIChanged(bIsHiddenFromAI);
 }
 
 void AClockbaitCharacter::MoveInput(const FInputActionValue& Value)

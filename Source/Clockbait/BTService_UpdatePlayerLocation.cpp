@@ -4,6 +4,11 @@
 #include "AIController.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "NavigationSystem.h"
+#include "ClockbaitRoomVolume.h"
+#include "ClockbaitCharacter.h"
+#include "ClockbaitGameState.h"
+#include "Clockbait.h"
 
 namespace
 {
@@ -11,6 +16,7 @@ namespace
 	const FName PlayerLocationKey(TEXT("PlayerLocation"));
 	const FName LastKnownPlayerLocationKey(TEXT("LastKnownPlayerLocation"));
 	const FName TargetActorKey(TEXT("TargetActor"));
+	const FName RoomVolumeKey(TEXT("RoomVolume"));
 }
 
 UBTService_UpdatePlayerLocation::UBTService_UpdatePlayerLocation()
@@ -56,16 +62,41 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 	TArray<AActor*> PerceivedActors;
 	PerceptionComponent->GetCurrentlyPerceivedActors(nullptr, PerceivedActors);
 
+	FBTUpdatePlayerLocationMemory* Memory = CastInstanceNodeMemory<FBTUpdatePlayerLocationMemory>(NodeMemory);
+
+	// RoomVolume lives on the Blackboard (set once per AI instance in BP), not as a UPROPERTY on this
+	// node - this node/asset is shared by every AI using BT_EnemyAI, so a UPROPERTY here would be one
+	// value shared by all of them instead of one per room.
+	AClockbaitRoomVolume* RoomVolume = Cast<AClockbaitRoomVolume>(Blackboard->GetValueAsObject(RoomVolumeKey));
+	if (!RoomVolume && !Memory->bLoggedMissingRoomVolume)
+	{
+		Memory->bLoggedMissingRoomVolume = true;
+		UE_LOG(LogClockbait, Warning, TEXT("UBTService_UpdatePlayerLocation: '%s' has no RoomVolume Blackboard key set; falling back to tracking players across the whole level."), *GetNameSafe(AIController));
+	}
+
 	const FVector AILocation = AIPawn->GetActorLocation();
 	AActor* BestTarget = nullptr;
 	float BestDistSq = TNumericLimits<float>::Max();
 
 	for (AActor* Actor : PerceivedActors)
 	{
-		const APawn* Pawn = Cast<APawn>(Actor);
+		APawn* Pawn = Cast<APawn>(Actor);
 		if (!Pawn || !Pawn->IsPlayerControlled())
 		{
 			continue;
+		}
+
+		if (RoomVolume && !RoomVolume->IsPawnInRoom(Pawn))
+		{
+			continue;
+		}
+
+		if (const AClockbaitCharacter* Character = Cast<AClockbaitCharacter>(Pawn))
+		{
+			if (Character->IsHiddenFromAI())
+			{
+				continue;
+			}
 		}
 
 		const float DistSq = FVector::DistSquared(AILocation, Actor->GetActorLocation());
@@ -75,8 +106,6 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 			BestTarget = Actor;
 		}
 	}
-
-	FBTUpdatePlayerLocationMemory* Memory = CastInstanceNodeMemory<FBTUpdatePlayerLocationMemory>(NodeMemory);
 
 	if (BestTarget)
 	{
@@ -101,7 +130,17 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 
 	if (BestTarget)
 	{
-		const FVector TargetLocation = BestTarget->GetActorLocation();
+		FVector TargetLocation = BestTarget->GetActorLocation();
+		FVector ProjectedLocation;
+		if (ProjectToNavMesh(*AIController, TargetLocation, ProjectedLocation))
+		{
+			TargetLocation = ProjectedLocation;
+		}
+		else
+		{
+			UE_LOG(LogClockbait, Verbose, TEXT("UBTService_UpdatePlayerLocation: Could not project '%s' location onto the NavMesh; using raw actor location."), *GetNameSafe(BestTarget));
+		}
+
 		Blackboard->SetValueAsBool(IsPlayerSeenKey, true);
 		Blackboard->SetValueAsVector(PlayerLocationKey, TargetLocation);
 		Blackboard->SetValueAsVector(LastKnownPlayerLocationKey, TargetLocation);
@@ -111,6 +150,35 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 	{
 		Blackboard->SetValueAsBool(IsPlayerSeenKey, false);
 		Blackboard->ClearValue(PlayerLocationKey);
+		Blackboard->ClearValue(LastKnownPlayerLocationKey);
 		Blackboard->ClearValue(TargetActorKey);
 	}
+
+	// Publish this room's AI position to the informant's minimap. Only possible once RoomVolume is
+	// configured, since that's what tells us which room's entry to update in GameState.
+	if (RoomVolume)
+	{
+		if (AClockbaitGameState* GameState = AIController->GetWorld()->GetGameState<AClockbaitGameState>())
+		{
+			GameState->UpdateRoomAIState(RoomVolume->RoomId, AILocation, BestTarget != nullptr);
+		}
+	}
+}
+
+bool UBTService_UpdatePlayerLocation::ProjectToNavMesh(const AAIController& AIController, const FVector& Location, FVector& OutProjectedLocation) const
+{
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(AIController.GetWorld());
+	if (!NavSys)
+	{
+		return false;
+	}
+
+	FNavLocation NavLocation;
+	if (!NavSys->ProjectPointToNavigation(Location, NavLocation, NavProjectionExtent, &AIController.GetNavAgentPropertiesRef()))
+	{
+		return false;
+	}
+
+	OutProjectedLocation = NavLocation.Location;
+	return true;
 }
