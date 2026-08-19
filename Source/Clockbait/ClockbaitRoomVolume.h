@@ -23,6 +23,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Room")
 	FName RoomId;
 
+	UPROPERTY(EditAnywhere ,Category = "Room")
+	bool bIsRoomDark = false;
+
 	/**
 	 * True if Pawn is currently overlapping this room's volume. Queried live off the collision
 	 * component (not a cached Begin/EndOverlap list) so it's correct even for a pawn that spawned
@@ -30,4 +33,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Room")
 	bool IsPawnInRoom(APawn* Pawn) const;
+
+	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
+	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
+
 };

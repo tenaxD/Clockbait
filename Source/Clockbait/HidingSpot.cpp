@@ -16,7 +16,17 @@ void AHidingSpot::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(AHidingSpot, OccupyingPawn);
 }
 
-void AHidingSpot::ServerEnterHiding_Implementation(APawn* RequestingPawn)
+void AHidingSpot::Interact_Implementation(APawn* Interactor)
+{
+	if (OccupyingPawn == Interactor) {
+		ExitHiding(Interactor);
+	}
+	else {
+		EnterHiding(Interactor);
+	}
+}
+
+void AHidingSpot::EnterHiding(APawn* RequestingPawn)
 {
 	// Reject rather than queue/replace - occupancy conflicts shouldn't happen in practice since the
 	// two players are always in different rooms, so a hard no-op here is enough.
@@ -25,6 +35,9 @@ void AHidingSpot::ServerEnterHiding_Implementation(APawn* RequestingPawn)
 		return;
 	}
 
+	if (GEngine) {
+		GEngine->AddOnScreenDebugMessage(1, 1.0f, FColor::Yellow, FString::Printf(TEXT("Player %s is now hidden"), *GetNameSafe(RequestingPawn)));
+	}
 	OccupyingPawn = RequestingPawn;
 
 	// Set directly in C++ (not via the BlueprintImplementableEvent below) because AI perception
@@ -38,7 +51,7 @@ void AHidingSpot::ServerEnterHiding_Implementation(APawn* RequestingPawn)
 	OnServerEnterHiding(RequestingPawn);
 }
 
-void AHidingSpot::ServerExitHiding_Implementation(APawn* RequestingPawn)
+void AHidingSpot::ExitHiding(APawn* RequestingPawn)
 {
 	if (RequestingPawn != OccupyingPawn)
 	{

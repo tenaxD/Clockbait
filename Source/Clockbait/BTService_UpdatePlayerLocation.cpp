@@ -75,12 +75,13 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 	}
 
 	const FVector AILocation = AIPawn->GetActorLocation();
-	AActor* BestTarget = nullptr;
+	AActor* GenuineTarget = nullptr;
 	float BestDistSq = TNumericLimits<float>::Max();
 
 	for (AActor* Actor : PerceivedActors)
 	{
 		APawn* Pawn = Cast<APawn>(Actor);
+
 		if (!Pawn || !Pawn->IsPlayerControlled())
 		{
 			continue;
@@ -103,54 +104,49 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 		if (DistSq < BestDistSq)
 		{
 			BestDistSq = DistSq;
-			BestTarget = Actor;
+			GenuineTarget = Actor;
 		}
 	}
 
-	if (BestTarget)
+	// Only refreshed while the target is truly perceived, so everything derived from it freezes
+	// the moment sight is lost instead of quietly following the player around walls.
+	if (GenuineTarget)
 	{
-		Memory->LockedTarget = BestTarget;
-		Memory->TimeSinceLostSight = 0.0f;
-	}
-	else if (Memory->LockedTarget.IsValid())
-	{
-		// Perception dropped. Hold onto the previous target for a moment so a player who runs
-		// behind the AI, or breaks line of sight briefly, doesn't shake it off instantly.
-		Memory->TimeSinceLostSight += DeltaSeconds;
+		FVector Projected;
+		Memory->LastPerceivedLocation = ProjectToNavMesh(
+			*AIController,
+			GenuineTarget->GetActorLocation(),
+			Projected) ? Projected : GenuineTarget->GetActorLocation();
 
-		if (Memory->TimeSinceLostSight <= LoseTargetDelay)
-		{
-			BestTarget = Memory->LockedTarget.Get();
-		}
-		else
-		{
-			Memory->LockedTarget.Reset();
-		}
+		Memory->LastPerceivedVelocity = GenuineTarget->GetVelocity();
 	}
 
-	if (BestTarget)
-	{
-		FVector TargetLocation = BestTarget->GetActorLocation();
-		FVector ProjectedLocation;
-		if (ProjectToNavMesh(*AIController, TargetLocation, ProjectedLocation))
-		{
-			TargetLocation = ProjectedLocation;
-		}
-		else
-		{
-			UE_LOG(LogClockbait, Verbose, TEXT("UBTService_UpdatePlayerLocation: Could not project '%s' location onto the NavMesh; using raw actor location."), *GetNameSafe(BestTarget));
-		}
+	Blackboard->SetValueAsBool(IsPlayerSeenKey, GenuineTarget != nullptr);
 
-		Blackboard->SetValueAsBool(IsPlayerSeenKey, true);
-		Blackboard->SetValueAsVector(PlayerLocationKey, TargetLocation);
-		Blackboard->SetValueAsVector(LastKnownPlayerLocationKey, TargetLocation);
-		Blackboard->SetValueAsObject(TargetActorKey, BestTarget);
+	if (GenuineTarget)
+	{
+		Blackboard->SetValueAsVector(PlayerLocationKey, Memory->LastPerceivedLocation);
+		Blackboard->SetValueAsObject(TargetActorKey, GenuineTarget);
+
+		// Guess the player kept running the way they were heading, so the AI comes around the corner
+		// instead of stopping dead at it. A nav raycast (rather than projecting the extrapolated
+		// point) keeps the guess reachable and on this side of any wall in between; SearchSpot keeps
+		// the exact last seen spot if there's no nav data to raycast against.
+		FVector SearchSpot = Memory->LastPerceivedLocation;
+		UNavigationSystemV1::NavigationRaycast(
+			AIController->GetWorld(),
+			Memory->LastPerceivedLocation,
+			Memory->LastPerceivedLocation + Memory->LastPerceivedVelocity.GetSafeNormal2D() * SearchLeadDistance,
+			SearchSpot);
+
+		// Deliberately never cleared here - the BT clears it once the AI has walked there and found
+		// nothing. Clearing it on a timer instead would wipe the trail mid-search, making the AI
+		// give up at every corner.
+		Blackboard->SetValueAsVector(LastKnownPlayerLocationKey, SearchSpot);
 	}
 	else
 	{
-		Blackboard->SetValueAsBool(IsPlayerSeenKey, false);
 		Blackboard->ClearValue(PlayerLocationKey);
-		Blackboard->ClearValue(LastKnownPlayerLocationKey);
 		Blackboard->ClearValue(TargetActorKey);
 	}
 
@@ -160,7 +156,7 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 	{
 		if (AClockbaitGameState* GameState = AIController->GetWorld()->GetGameState<AClockbaitGameState>())
 		{
-			GameState->UpdateRoomAIState(RoomVolume->RoomId, AILocation, BestTarget != nullptr);
+			GameState->UpdateRoomAIState(RoomVolume->RoomId, AILocation, GenuineTarget != nullptr);
 		}
 	}
 }

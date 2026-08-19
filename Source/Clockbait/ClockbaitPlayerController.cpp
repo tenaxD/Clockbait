@@ -9,11 +9,20 @@
 #include "Blueprint/UserWidget.h"
 #include "Clockbait.h"
 #include "Widgets/Input/SVirtualJoystick.h"
+#include "ClockbaitGameMode.h"
 
 AClockbaitPlayerController::AClockbaitPlayerController()
 {
 	// set the player camera manager class
 	PlayerCameraManagerClass = AClockbaitCameraManager::StaticClass();
+}
+
+void AClockbaitPlayerController::ServerRequestRestart_Implementation()
+{
+	if (AClockbaitGameMode* GM = GetWorld()->GetAuthGameMode<AClockbaitGameMode>()) {
+		GM->TravelToCurrentLevel();
+	}
+	
 }
 
 void AClockbaitPlayerController::BeginPlay()

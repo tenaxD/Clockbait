@@ -55,10 +55,9 @@ void AClockbaitGameMode::NotifyPlayerCaught(APawn* CaughtPawn)
 		}
 	}
 
-	GetWorldTimerManager().SetTimer(GameOverResetTimerHandle, this, &AClockbaitGameMode::ResetLevel, GameOverResetDelay, false);
 }
 
-void AClockbaitGameMode::ResetLevel()
+void AClockbaitGameMode::TravelToCurrentLevel()
 {
-	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this, true)));
+	GetWorld()->ServerTravel("L_Main");
 }

@@ -5,10 +5,12 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Interactable.h"
 #include "Clockbait.h"
 
 AClockbaitCharacter::AClockbaitCharacter()
@@ -34,6 +36,11 @@ AClockbaitCharacter::AClockbaitCharacter()
 	FirstPersonCameraComponent->FirstPersonFieldOfView = 70.0f;
 	FirstPersonCameraComponent->FirstPersonScale = 0.6f;
 
+	//Create the Spot Light Component
+	Flashlight = CreateDefaultSubobject<USpotLightComponent>(TEXT("Flashlight"));
+	Flashlight->SetupAttachment(FirstPersonCameraComponent);
+	Flashlight->SetVisibility(false);
+
 	// configure the character comps
 	GetMesh()->SetOwnerNoSee(true);
 	GetMesh()->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::WorldSpaceRepresentation;
@@ -43,6 +50,19 @@ AClockbaitCharacter::AClockbaitCharacter()
 	// Configure character movement
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 	GetCharacterMovement()->AirControl = 0.5f;
+}
+
+void AClockbaitCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	//start the line tracing timer
+	GetWorld()->GetTimerManager().SetTimer(TraceTimerHandle, this, &AClockbaitCharacter::PerformInteractionTrace, 0.05f, true);
+}
+
+void AClockbaitCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 }
 
 void AClockbaitCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -61,11 +81,43 @@ void AClockbaitCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AClockbaitCharacter::LookInput);
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AClockbaitCharacter::LookInput);
 
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AClockbaitCharacter::Interact);
 	}
 	else
 	{
 		UE_LOG(LogClockbait, Error, TEXT("'%s' Failed to find an Enhanced Input Component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
 	}
+}
+
+void AClockbaitCharacter::PerformInteractionTrace()
+{
+	FVector Start = FirstPersonCameraComponent->GetComponentLocation();
+	FVector End = Start + (FirstPersonCameraComponent->GetForwardVector() * maxInteractionDist);
+	FCollisionShape InteractionSphere = FCollisionShape::MakeSphere(InteractionSphereRadius);
+	FHitResult HitResult;
+
+	bool HasHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ClockbaitCollision::Interaction, InteractionSphere);
+
+	if (HasHit)
+	{
+		AActor* HitActor = HitResult.GetActor();
+		if (HitActor) {
+			FocusedActor = HitActor;
+			//printing focused actor name to the screen
+			if (GEngine) {
+				GEngine->AddOnScreenDebugMessage(1, 1.0f, FColor::Yellow, FString::Printf(TEXT("Hit actor: %s"), *GetNameSafe(HitActor)));
+			}
+		}
+	}
+	else{
+		FocusedActor = nullptr;
+	}
+}
+
+void AClockbaitCharacter::Interact()
+{
+	if (!FocusedActor) return;
+	ServerInteract(FocusedActor);
 }
 
 
@@ -79,6 +131,14 @@ void AClockbaitCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AClockbaitCharacter, bIsHiddenFromAI);
+}
+
+
+void AClockbaitCharacter::ServerInteract_Implementation(AActor* Target)
+{
+	if (Target && Target->Implements<UInteractable>()) {
+		IInteractable::Execute_Interact(Target, this);
+	}
 }
 
 void AClockbaitCharacter::SetHiddenFromAI(bool bNewHiddenFromAI)
@@ -98,6 +158,11 @@ void AClockbaitCharacter::SetHiddenFromAI(bool bNewHiddenFromAI)
 
 	bIsHiddenFromAI = bNewHiddenFromAI;
 	OnRep_IsHiddenFromAI(); // OnRep only fires on clients; call it manually so the server also runs the cosmetic event
+}
+
+void AClockbaitCharacter::ToggleFlashlight(bool bTurnOn)
+{
+	Flashlight->SetVisibility(bTurnOn);
 }
 
 void AClockbaitCharacter::OnRep_IsHiddenFromAI()

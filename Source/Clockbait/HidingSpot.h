@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Interactable.h"
 #include "HidingSpot.generated.h"
 
 /**
@@ -11,7 +12,7 @@
  *  as bIsHiddenFromAI so BTService_UpdatePlayerLocation stops perceiving them.
  */
 UCLASS()
-class CLOCKBAIT_API AHidingSpot : public AActor
+class CLOCKBAIT_API AHidingSpot : public AActor, public IInteractable
 {
 	GENERATED_BODY()
 
@@ -20,11 +21,11 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Hiding")
-	void ServerEnterHiding(APawn* RequestingPawn);
+	virtual void Interact_Implementation(APawn* Interactor) override;
 
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Hiding")
-	void ServerExitHiding(APawn* RequestingPawn);
+	void EnterHiding(APawn* RequestingPawn);
+
+	void ExitHiding(APawn* RequestingPawn);
 
 	UFUNCTION(BlueprintCallable, Category = "Hiding")
 	bool IsOccupied() const { return OccupyingPawn != nullptr; }

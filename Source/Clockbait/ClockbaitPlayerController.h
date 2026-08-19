@@ -34,6 +34,9 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameOver")
 	void OnGameOver();
 
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "GameOver")
+	void ServerRequestRestart();
+
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
 	TArray<UInputMappingContext*> DefaultMappingContexts;

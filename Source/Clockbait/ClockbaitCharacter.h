@@ -9,6 +9,7 @@
 
 class UInputComponent;
 class USkeletalMeshComponent;
+class USpotLightComponent;
 class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
@@ -30,6 +31,9 @@ class AClockbaitCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FirstPersonCameraComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	USpotLightComponent* Flashlight;
+
 protected:
 
 	/** Jump Input Action */
@@ -49,10 +53,14 @@ protected:
 	class UInputAction* MouseLookAction;
 
 	UPROPERTY(EditAnywhere, Category ="Input")
-	class UInputAction* ActivateAlarmAction;
+	class UInputAction* InteractAction;
 	
 public:
 	AClockbaitCharacter();
+
+	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaTime) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -60,11 +68,16 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Alarm")
 	void ServerActivateAlarm(AActor* AlarmTarget);
 
+	UFUNCTION(Server, Reliable)
+	void ServerInteract(AActor* Target);
+
 	/** Server-only: called by AHidingSpot when this player enters/exits a hiding spot. Not an RPC itself, hiding spots already validate over their own RPCs. */
 	UFUNCTION(BlueprintCallable, Category = "Hiding")
 	void SetHiddenFromAI(bool bNewHiddenFromAI);
 
 	bool IsHiddenFromAI() const { return bIsHiddenFromAI; }
+
+	void ToggleFlashlight(bool bTurnOn);
 
 protected:
 
@@ -106,7 +119,11 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
 
+	UPROPERTY(EditAnywhere)
+	float maxInteractionDist{ 300.0f };
 
+	UPROPERTY(EditAnywhere)
+	float InteractionSphereRadius{ 30.0f };
 
 
 protected:
@@ -123,5 +140,14 @@ public:
 	/** Returns first person camera component **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
+
+private:
+	FTimerHandle TraceTimerHandle;
+
+	void PerformInteractionTrace();
+
+	AActor* FocusedActor = nullptr;
+
+	void Interact();
 };
 

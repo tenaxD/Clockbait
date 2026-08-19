@@ -21,6 +21,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameOver")
 	void NotifyPlayerCaught(APawn* CaughtPawn);
 
+	void TravelToCurrentLevel();
+
 protected:
 
 	/** Distributes joining players across available PlayerStart actors instead of stacking them on one */
@@ -40,8 +42,6 @@ private:
 	bool bGameOverTriggered = false;
 
 	FTimerHandle GameOverResetTimerHandle;
-
-	void ResetLevel();
 };
 
 
