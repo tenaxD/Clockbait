@@ -79,6 +79,13 @@ public:
 
 	void ToggleFlashlight(bool bTurnOn);
 
+	UFUNCTION(Client, Reliable, Category = "Hiding")
+	void ClientLockLookRotation();
+
+	UFUNCTION(Client, Reliable, Category = "Hiding")
+	void ClientUnlockLookRotation();
+
+
 protected:
 
 	/** Implemented in Blueprint: runs on the server, contains the cooldown-check + Activate logic */
@@ -120,10 +127,10 @@ protected:
 	virtual void DoJumpEnd();
 
 	UPROPERTY(EditAnywhere)
-	float maxInteractionDist{ 300.0f };
+	float maxInteractionDist{ 100.0f };
 
 	UPROPERTY(EditAnywhere)
-	float InteractionSphereRadius{ 30.0f };
+	float InteractionSphereRadius{ 50.0f };
 
 
 protected:

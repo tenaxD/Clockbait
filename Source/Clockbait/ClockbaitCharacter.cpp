@@ -96,12 +96,12 @@ void AClockbaitCharacter::PerformInteractionTrace()
 	FCollisionShape InteractionSphere = FCollisionShape::MakeSphere(InteractionSphereRadius);
 	FHitResult HitResult;
 
-	bool HasHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ClockbaitCollision::Interaction, InteractionSphere);
+	bool HasHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECC_Visibility, InteractionSphere);
 
 	if (HasHit)
 	{
 		AActor* HitActor = HitResult.GetActor();
-		if (HitActor) {
+		if (HitActor && HitActor->Implements<UInteractable>()) {
 			FocusedActor = HitActor;
 			//printing focused actor name to the screen
 			if (GEngine) {
@@ -163,6 +163,18 @@ void AClockbaitCharacter::SetHiddenFromAI(bool bNewHiddenFromAI)
 void AClockbaitCharacter::ToggleFlashlight(bool bTurnOn)
 {
 	Flashlight->SetVisibility(bTurnOn);
+}
+
+void AClockbaitCharacter::ClientLockLookRotation_Implementation()
+{
+	GetController<APlayerController>()->PlayerCameraManager->ViewPitchMin = 0.0f;
+	GetController<APlayerController>()->PlayerCameraManager->ViewPitchMax = 25.0f;
+}
+
+void AClockbaitCharacter::ClientUnlockLookRotation_Implementation()
+{
+	GetController<APlayerController>()->PlayerCameraManager->ViewPitchMin = -89.9f;
+	GetController<APlayerController>()->PlayerCameraManager->ViewPitchMax = 89.9f;
 }
 
 void AClockbaitCharacter::OnRep_IsHiddenFromAI()

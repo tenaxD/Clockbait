@@ -19,6 +19,8 @@ class CLOCKBAIT_API AHidingSpot : public AActor, public IInteractable
 public:
 	AHidingSpot();
 
+	virtual void BeginPlay() override;
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual void Interact_Implementation(APawn* Interactor) override;
@@ -47,4 +49,10 @@ protected:
 
 	UPROPERTY(ReplicatedUsing = OnRep_OccupyingPawn)
 	APawn* OccupyingPawn = nullptr;
+
+	UPROPERTY(VisibleAnywhere, Category = "Feature")
+	class USceneComponent* HidingPosition = nullptr;
+
+	UPROPERTY(EditAnywhere)
+	float HidingExitDist = 200.0f;
 };
