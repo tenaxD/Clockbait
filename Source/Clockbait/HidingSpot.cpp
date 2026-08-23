@@ -77,30 +77,38 @@ void AHidingSpot::ExitHiding(APawn* RequestingPawn)
 		return;
 	}
 
+	AClockbaitCharacter* Character = Cast<AClockbaitCharacter>(RequestingPawn);
+	if (!Character)
+	{
+		return;
+	}
+
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys)
+	{
+		UE_LOG(LogClockbait, Warning, TEXT("Can't leave the hiding spot: no navigation system."));
+		return;
+	}
+
+	const FVector Start = Character->GetFirstPersonCameraComponent()->GetComponentLocation();
+	const FVector End = Start + Character->GetFirstPersonCameraComponent()->GetForwardVector().GetSafeNormal2D() * HidingExitDist;
+
+	FNavLocation NavLoc;
+	if (!NavSys->ProjectPointToNavigation(End, NavLoc, FVector{ 10.0f, 10.0f, 500.0f }))
+	{
+		UE_LOG(LogClockbait, Warning, TEXT("Can't leave because PlayerExitPosition cannot be translated to NavMesh"));
+		return;
+	}
+
+	// Only give up occupancy once the exit is guaranteed to succeed. Releasing it earlier and then
+	// bailing out would leave the player frozen and hidden while the spot considered itself free.
 	OccupyingPawn = nullptr;
 
-	if (AClockbaitCharacter* Character = Cast<AClockbaitCharacter>(RequestingPawn))
-	{
-		FVector PlayerExitPosition = FVector::ZeroVector;
-		FVector Start = Character->GetFirstPersonCameraComponent()->GetComponentLocation();
-		FVector End = Start + Character->GetFirstPersonCameraComponent()->GetForwardVector().GetSafeNormal2D() * HidingExitDist;
-		if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld())) {
-			FNavLocation NavLoc;
-			bool Found = NavSys->ProjectPointToNavigation(End, NavLoc, FVector{ 10.0f, 10.0f, 500.0f });
-			if (Found) {
-				PlayerExitPosition = NavLoc.Location;
-				Character->SetHiddenFromAI(false);
-				Character->SetActorLocation(PlayerExitPosition);
-				Character->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-				Character->ClientUnlockLookRotation();
-				UE_LOG(LogClockbait, Display, TEXT("Exit from Hiding Spot succeeded"));
-			}
-			else {
-				UE_LOG(LogClockbait, Warning, TEXT("Can't leave because PlayerExitPosition cannot be translated to NavMesh"));
-				return;
-			}
-		}
-	}
+	Character->SetHiddenFromAI(false);
+	Character->SetActorLocation(NavLoc.Location);
+	Character->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	Character->ClientUnlockLookRotation();
+	UE_LOG(LogClockbait, Display, TEXT("Exit from Hiding Spot succeeded"));
 
 	OnRep_OccupyingPawn();
 	OnServerExitHiding(RequestingPawn);
