@@ -28,6 +28,12 @@ public:
 	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "GameOver")
 	void ClientShowGameOver();
 
+	UFUNCTION(Client, Reliable)
+	void EnterPuzzleMode(AActor* PuzzleStation, float InteractionBlockTime);
+
+	UFUNCTION(Client, Reliable)
+	void ExitPuzzleMode(float InteractionBlockTime);
+
 protected:
 
 	/** Implemented in Blueprint: runs on this client, shows WBP_LossScreen / existing game over logic */

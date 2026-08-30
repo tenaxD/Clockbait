@@ -65,8 +65,6 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	/** Requests the server to activate an alarm target hit by the local player's line trace */
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Alarm")
-	void ServerActivateAlarm(AActor* AlarmTarget);
 
 	UFUNCTION(Server, Reliable)
 	void ServerInteract(AActor* Target);
@@ -87,10 +85,6 @@ public:
 
 
 protected:
-
-	/** Implemented in Blueprint: runs on the server, contains the cooldown-check + Activate logic */
-	UFUNCTION(BlueprintImplementableEvent, Category = "Alarm")
-	void OnServerActivateAlarm(AActor* AlarmTarget);
 
 	/** Implemented in Blueprint: runs on every client (including the owner), for hiding cosmetics (crouch pose, mesh visibility, etc.) */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Hiding")
@@ -130,7 +124,7 @@ protected:
 	float maxInteractionDist{ 100.0f };
 
 	UPROPERTY(EditAnywhere)
-	float InteractionSphereRadius{ 50.0f };
+	float InteractionSphereRadius{ 30.0f };
 
 
 protected:
@@ -147,6 +141,9 @@ public:
 	/** Returns first person camera component **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
+	//Holding player's hiding spot to exit without checking FocusedActor
+	UPROPERTY(VisibleAnywhere)
+	class AHidingSpot* CurrentHidingSpot{ nullptr };
 
 private:
 	FTimerHandle TraceTimerHandle;

@@ -23,8 +23,29 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Room")
 	FName RoomId;
 
-	UPROPERTY(EditAnywhere ,Category = "Room")
+	UPROPERTY(EditAnywhere, Category = "Room")
 	bool bIsRoomDark = false;
+
+	UPROPERTY(EditAnywhere, Category = "Room")
+	class AAutomaticDoor* EntranceDoor{ nullptr };
+
+	UPROPERTY(EditAnywhere, Category = "Room")
+	class AAutomaticDoor* ExitDoor{ nullptr };
+
+	UPROPERTY()
+	bool bPuzzleSolved{ false };
+
+	/**
+	 * The room is the only thing that holds pointers to its doors - everything else (the puzzle
+	 * station now, the puzzle controller later) asks the room instead of keeping its own copy.
+	 * One owner means there is nothing to keep in sync, and a spawner building rooms at runtime
+	 * has one link to wire instead of three.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Room")
+	void SetExitLocked(bool bNewLocked);
+
+	UFUNCTION(BlueprintCallable, Category = "Room")
+	void MarkPuzzleSolved();
 
 	/**
 	 * True if Pawn is currently overlapping this room's volume. Queried live off the collision

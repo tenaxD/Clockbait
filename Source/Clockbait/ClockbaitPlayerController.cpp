@@ -17,6 +17,28 @@ AClockbaitPlayerController::AClockbaitPlayerController()
 	PlayerCameraManagerClass = AClockbaitCameraManager::StaticClass();
 }
 
+void AClockbaitPlayerController::ExitPuzzleMode_Implementation(float InteractionBlockTime)
+{
+	SetViewTargetWithBlend(GetPawn(), InteractionBlockTime, EViewTargetBlendFunction::VTBlend_Cubic);
+	FInputModeGameOnly PuzzleExitInputMode;
+	SetInputMode(PuzzleExitInputMode);
+	ResetIgnoreLookInput();
+	bShowMouseCursor = false;
+	bEnableClickEvents = false;
+	CurrentClickTraceChannel = ECC_Visibility;
+}
+
+void AClockbaitPlayerController::EnterPuzzleMode_Implementation(AActor* PuzzleStation, float InteractionBlockTime)
+{
+	SetViewTargetWithBlend(PuzzleStation, InteractionBlockTime, EViewTargetBlendFunction::VTBlend_Cubic);
+	FInputModeGameAndUI PuzzleInputMode;
+	SetInputMode(PuzzleInputMode);
+	SetIgnoreLookInput(true);
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	CurrentClickTraceChannel = ClockbaitCollision::Interaction;
+}
+
 void AClockbaitPlayerController::ServerRequestRestart_Implementation()
 {
 	if (AClockbaitGameMode* GM = GetWorld()->GetAuthGameMode<AClockbaitGameMode>()) {

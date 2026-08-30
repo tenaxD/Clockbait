@@ -12,6 +12,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Interactable.h"
 #include "Clockbait.h"
+#include "DrawDebugHelpers.h"
+#include "HidingSpot.h"
 
 AClockbaitCharacter::AClockbaitCharacter()
 {
@@ -108,6 +110,9 @@ void AClockbaitCharacter::PerformInteractionTrace()
 				GEngine->AddOnScreenDebugMessage(1, 1.0f, FColor::Yellow, FString::Printf(TEXT("Hit actor: %s"), *GetNameSafe(HitActor)));
 			}
 		}
+		else {
+			FocusedActor = nullptr;
+		}
 	}
 	else{
 		FocusedActor = nullptr;
@@ -116,14 +121,8 @@ void AClockbaitCharacter::PerformInteractionTrace()
 
 void AClockbaitCharacter::Interact()
 {
-	if (!FocusedActor) return;
+	if (!FocusedActor && !bIsHiddenFromAI) return;
 	ServerInteract(FocusedActor);
-}
-
-
-void AClockbaitCharacter::ServerActivateAlarm_Implementation(AActor* AlarmTarget)
-{
-	OnServerActivateAlarm(AlarmTarget);
 }
 
 void AClockbaitCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -136,6 +135,10 @@ void AClockbaitCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 void AClockbaitCharacter::ServerInteract_Implementation(AActor* Target)
 {
+	if (CurrentHidingSpot) {
+		IInteractable::Execute_Interact(CurrentHidingSpot, this);
+		return;
+	}
 	if (Target && Target->Implements<UInteractable>()) {
 		IInteractable::Execute_Interact(Target, this);
 	}

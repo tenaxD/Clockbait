@@ -64,6 +64,7 @@ void AHidingSpot::EnterHiding(APawn* RequestingPawn)
 		Character->SetActorLocation(HidingPosition->GetComponentLocation());
 		Character->GetCharacterMovement()->DisableMovement();
 		Character->ClientLockLookRotation();
+		Character->CurrentHidingSpot = this;
 	}
 
 	OnRep_OccupyingPawn(); // OnRep only fires on clients; call manually so the server also gets OnHidingOccupancyChanged
@@ -108,6 +109,7 @@ void AHidingSpot::ExitHiding(APawn* RequestingPawn)
 	Character->SetActorLocation(NavLoc.Location);
 	Character->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 	Character->ClientUnlockLookRotation();
+	Character->CurrentHidingSpot = nullptr;
 	UE_LOG(LogClockbait, Display, TEXT("Exit from Hiding Spot succeeded"));
 
 	OnRep_OccupyingPawn();
