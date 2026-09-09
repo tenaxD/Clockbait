@@ -7,6 +7,7 @@
 #include "ClockbaitCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "ClockbaitRoomVolume.h"
+#include "PuzzleController.h"
 #include "Clockbait.h"
 
 // Sets default values
@@ -34,8 +35,10 @@ void APuzzleStation::Confirm()
 
 	if (!bSolved)
 	{
-		// Failure feedback - the loud noise, the shared attempt counter, the AI speed-up - belongs to
-		// the puzzle controller, the only thing that can see both rooms. Nothing to do here yet.
+		if (PuzzleController)
+		{
+			PuzzleController->NotifyStationFailed(this);
+		}
 		return;
 	}
 	UE_LOG(LogClockbait, Display, TEXT("Puzzle Solved"));
@@ -47,11 +50,9 @@ void APuzzleStation::Confirm()
 		ExitPuzzle(SolvingPlayer);
 	}
 
-	// Temporary: the real condition is "both stations solved", which only the controller can judge.
-	// Until it exists, a solved station opens its own room's exit so the loop is playable end to end.
-	if (Room)
+	if (PuzzleController)
 	{
-		Room->MarkPuzzleSolved();
+		PuzzleController->NotifyStationSolved(this);
 	}
 }
 

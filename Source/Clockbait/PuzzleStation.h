@@ -20,7 +20,11 @@ public:
 
 	void Confirm();
 
+	void SetPuzzleController(class APuzzleController* Controller) { PuzzleController = Controller; }
+
 	virtual bool CheckSolution() const PURE_VIRTUAL(APuzzleStation::CheckSolution, return false;)
+
+	class AClockbaitRoomVolume* GetRoom() const { return Room; }
 
 	virtual void Interact_Implementation(APawn* Interactor) override;
 
@@ -34,8 +38,7 @@ protected:
 
 	void ExitPuzzle(APawn* PlayerRef);
 	
-	/*UPROPERTY(EditAnywhere)
-	class APuzzleController* Controller{ nullptr };*/
+	class APuzzleController* PuzzleController{ nullptr };
 
 	UPROPERTY(VisibleAnywhere, Category = "Puzzle")
 	class UCameraComponent* PuzzleCamera{ nullptr };

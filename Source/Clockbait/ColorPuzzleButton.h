@@ -5,18 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interactable.h"
+#include "PuzzleTypes.h"
 #include "ColorPuzzleButton.generated.h"
-
-UENUM(BlueprintType)
-enum class EPuzzleColor : uint8
-{
-	Red,
-	Green,
-	Blue,
-	Yellow,
-	Purple,
-	Count UMETA(Hidden)
-};
 
 UCLASS()
 class CLOCKBAIT_API AColorPuzzleButton : public AActor, public IInteractable
@@ -28,6 +18,9 @@ public:
 
 	UPROPERTY(ReplicatedUsing=OnRep_ColorChanged)
 	EPuzzleColor CurrentColor = EPuzzleColor::Red;
+
+	UPROPERTY(EditAnywhere)
+	EPuzzleSymbol Symbol{};
 
 	UPROPERTY(EditAnywhere)
 	TArray<UMaterial*> Colors;
@@ -44,6 +37,8 @@ public:
 
 	virtual void Interact_Implementation(APawn* Interactor) override;
 
+	void SetStation(class APuzzleStation* InStation) { Station = InStation; }
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -54,7 +49,6 @@ protected:
 	class UStaticMeshComponent* ButtonMesh{ nullptr };
 
 	/** The station this button belongs to. Consulted so a solved station's buttons stop responding. */
-	UPROPERTY(EditAnywhere)
 	class APuzzleStation* Station{ nullptr };
 public:	
 	// Called every frame

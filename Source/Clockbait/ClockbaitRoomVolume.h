@@ -33,7 +33,14 @@ public:
 	class AAutomaticDoor* ExitDoor{ nullptr };
 
 	UPROPERTY()
+	class APuzzleController* PuzzleController{ nullptr };
+
+	UPROPERTY()
 	bool bPuzzleSolved{ false };
+
+	//The room gets sealed meaning there is no coming back once both players exit after completing the puzzle
+	UPROPERTY()
+	bool bSealed{ false };
 
 	/**
 	 * The room is the only thing that holds pointers to its doors - everything else (the puzzle
@@ -43,9 +50,14 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Room")
 	void SetExitLocked(bool bNewLocked);
+	
+	void SetPuzzleController(class APuzzleController* ControllerRef) { PuzzleController = ControllerRef; }
 
 	UFUNCTION(BlueprintCallable, Category = "Room")
 	void MarkPuzzleSolved();
+
+
+	void Seal();
 
 	/**
 	 * True if Pawn is currently overlapping this room's volume. Queried live off the collision
@@ -54,6 +66,9 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Room")
 	bool IsPawnInRoom(APawn* Pawn) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Room")
+	bool HasPlayerInside() const;
 
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
