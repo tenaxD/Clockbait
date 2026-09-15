@@ -5,6 +5,7 @@
 #include "Clockbait.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SceneComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Net/UnrealNetwork.h"
 #include "ClockbaitCharacter.h"
 #include "PuzzleStation.h"
@@ -20,6 +21,8 @@ AColorPuzzleButton::AColorPuzzleButton()
 	ButtonMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ButtonMesh"));
 	ButtonMesh->SetupAttachment(RootComponent);
 
+	ButtonMaterial = ButtonMesh->CreateDynamicMaterialInstance(0);
+
 }
 
 void AColorPuzzleButton::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -29,9 +32,20 @@ void AColorPuzzleButton::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(AColorPuzzleButton, CurrentColor);
 }
 
+void AColorPuzzleButton::ApplyColor()
+{
+	if (!ButtonMaterial || !Colors.Find(CurrentColor))
+	{
+		return;
+	}
+
+	ButtonMaterial->SetVectorParameterValue(TEXT("ButtonColor"), Colors[CurrentColor]);
+}
+
 void AColorPuzzleButton::OnRep_ColorChanged()
 {
-	ButtonMesh->SetMaterial(0, Colors[static_cast<uint8>(CurrentColor)]);
+	ApplyColor();
+	OnColorChanged();
 }
 
 void AColorPuzzleButton::ChangeColor()
@@ -42,7 +56,6 @@ void AColorPuzzleButton::ChangeColor()
 		((static_cast<uint8>(CurrentColor) + 1) % static_cast<uint8>(EPuzzleColor::Count))
 		);
 	OnRep_ColorChanged();
-	OnColorChanged();
 }
 
 void AColorPuzzleButton::Interact_Implementation(APawn* Interactor)
@@ -59,7 +72,25 @@ void AColorPuzzleButton::Interact_Implementation(APawn* Interactor)
 void AColorPuzzleButton::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	ButtonMaterial = ButtonMesh->CreateDynamicMaterialInstance(0);
+	if (!ButtonMaterial)
+	{
+		UE_LOG(LogClockbait, Warning, TEXT("ColorPuzzleButton '%s': material slot 0 is empty, so the button cannot change colour"), *GetName());
+		return;
+	}
+
+	if (SymbolTextures.Find(Symbol))
+	{
+		ButtonMaterial->SetTextureParameterValue(TEXT("SymbolMask"), SymbolTextures[Symbol]);
+	}
+	else
+	{
+		UE_LOG(LogClockbait, Warning, TEXT("ColorPuzzleButton '%s': nothing in SymbolTextures for symbol %s"),
+			*GetName(), *UEnum::GetValueAsString(Symbol));
+	}
+
+	ApplyColor();
 }
 
 void AColorPuzzleButton::NotifyActorOnClicked(FKey ButtonPressed)

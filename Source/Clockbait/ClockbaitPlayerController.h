@@ -34,6 +34,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ExitPuzzleMode(float InteractionBlockTime);
 
+	void OpenTablet();
+
+	void CloseTablet();
+
 protected:
 
 	/** Implemented in Blueprint: runs on this client, shows WBP_LossScreen / existing game over logic */
@@ -57,6 +61,12 @@ protected:
 
 	/** Pointer to the mobile controls widget */
 	TObjectPtr<UUserWidget> MobileControlsWidget;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UTabletWidget> TabletWidgetClass;
+
+	UPROPERTY()
+	class UTabletWidget* TabletWidget;
 
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;

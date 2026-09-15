@@ -6,6 +6,7 @@
 #include "ClockbaitCharacter.h"
 #include "PuzzleController.h"
 #include "AutomaticDoor.h"
+#include "ClockbaitPlayerController.h"
 
 AClockbaitRoomVolume::AClockbaitRoomVolume()
 {
@@ -29,6 +30,11 @@ void AClockbaitRoomVolume::Seal()
 {
 	bSealed = true;
 	SetExitLocked(true);
+}
+
+void AClockbaitRoomVolume::GetRoomBounds(FVector& OutOrigin, FVector& OutExtent) const
+{
+	GetActorBounds(true, OutOrigin, OutExtent);
 }
 
 bool AClockbaitRoomVolume::IsPawnInRoom(APawn* Pawn) const
@@ -68,6 +74,12 @@ void AClockbaitRoomVolume::NotifyActorBeginOverlap(AActor* OtherActor)
 		if (bIsRoomDark) {
 			Player->ToggleFlashlight(true);
 		}
+		else {
+			if (AClockbaitPlayerController* Controller = Player->GetController<AClockbaitPlayerController>()) {
+				if (!Player->IsLocallyControlled()) return;
+				Controller->OpenTablet();
+			}
+		}
 	}
 }
 
@@ -90,5 +102,10 @@ void AClockbaitRoomVolume::NotifyActorEndOverlap(AActor* OtherActor)
 		}
 
 		Player->ToggleFlashlight(false);
+		if (AClockbaitPlayerController* Controller = Player->GetController<AClockbaitPlayerController>()) {
+			if (!bIsRoomDark && Player->IsLocallyControlled()) {
+				Controller->CloseTablet();
+			}
+		}
 	}
 }

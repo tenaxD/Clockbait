@@ -23,7 +23,17 @@ public:
 	EPuzzleSymbol Symbol{};
 
 	UPROPERTY(EditAnywhere)
-	TArray<UMaterial*> Colors;
+	TMap<EPuzzleSymbol, UTexture2D*> SymbolTextures;
+
+	UPROPERTY(EditAnywhere)
+	TMap<EPuzzleColor, FLinearColor> Colors;
+
+	/**
+	 * This button's private copy of the material. Parameters cannot be set on the material asset
+	 * itself - every button shares that one - so each button wraps it in a dynamic instance.
+	 */
+	UPROPERTY()
+	class UMaterialInstanceDynamic* ButtonMaterial{ nullptr };
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -32,6 +42,9 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnColorChanged();
+
+	
+	void ApplyColor();
 
 	void ChangeColor();
 

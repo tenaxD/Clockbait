@@ -59,6 +59,8 @@ public:
 
 	void Seal();
 
+	void GetRoomBounds(FVector& OutOrigin, FVector& OutExtent) const;
+
 	/**
 	 * True if Pawn is currently overlapping this room's volume. Queried live off the collision
 	 * component (not a cached Begin/EndOverlap list) so it's correct even for a pawn that spawned

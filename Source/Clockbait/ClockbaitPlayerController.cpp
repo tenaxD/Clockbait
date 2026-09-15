@@ -10,6 +10,7 @@
 #include "Clockbait.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "ClockbaitGameMode.h"
+#include "TabletWidget.h"
 
 AClockbaitPlayerController::AClockbaitPlayerController()
 {
@@ -70,6 +71,12 @@ void AClockbaitPlayerController::BeginPlay()
 		}
 
 	}
+	if (IsLocalPlayerController() && TabletWidgetClass) {
+		TabletWidget = CreateWidget<UTabletWidget>(this, TabletWidgetClass);
+		if (!TabletWidget) return;
+		TabletWidget->AddToViewport();
+		TabletWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void AClockbaitPlayerController::ClientShowGameOver_Implementation()
@@ -103,4 +110,16 @@ void AClockbaitPlayerController::SetupInputComponent()
 		}
 	}
 	
+}
+
+void AClockbaitPlayerController::OpenTablet()
+{
+	if (!TabletWidget) return;
+	TabletWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void AClockbaitPlayerController::CloseTablet()
+{
+	if (!TabletWidget) return;
+	TabletWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
