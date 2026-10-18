@@ -8,9 +8,10 @@ void AClockbaitGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AClockbaitGameState, RoomAIStates);
+	DOREPLIFETIME(AClockbaitGameState, ReadyCount);
 }
 
-void AClockbaitGameState::UpdateRoomAIState(FName RoomId, FVector AILocation, bool bIsPerceivingPlayer)
+void AClockbaitGameState::UpdateRoomAIState(FName RoomId, FVector AILocation, EEntityState AIState)
 {
 	if (!HasAuthority())
 	{
@@ -30,5 +31,6 @@ void AClockbaitGameState::UpdateRoomAIState(FName RoomId, FVector AILocation, bo
 	}
 
 	Existing->AILocation = AILocation;
-	Existing->bIsPerceivingPlayer = bIsPerceivingPlayer;
+	Existing->EnemyState = AIState;
 }
+

@@ -23,7 +23,11 @@ public:
 
 	void TravelToCurrentLevel();
 
+	void NotifyPlayerReady(APlayerController* PC);
+
 protected:
+	UPROPERTY()
+	TSet<TObjectPtr<APlayerController>> PlayersReady;
 
 	/** Distributes joining players across available PlayerStart actors instead of stacking them on one */
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
@@ -31,9 +35,14 @@ protected:
 	/** Logs player connections so possession can be verified in the Output Log during PIE testing */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
+	void ShowGameOverToAll();
+
 	/** How long to show the game over screen before the level resets for everyone */
 	UPROPERTY(EditDefaultsOnly, Category = "GameOver", meta = (ClampMin = "0.0", UIMin = "0.0"))
-	float GameOverResetDelay = 4.0f;
+	float GameOverResetDelay = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float KillCamDuration = 1.8f;
 
 private:
 
@@ -42,6 +51,8 @@ private:
 	bool bGameOverTriggered = false;
 
 	FTimerHandle GameOverResetTimerHandle;
+
+	FTimerHandle GameOverShowTimerHandle;
 };
 
 

@@ -2,15 +2,18 @@
 
 
 #include "AlarmClock.h"
+#include "ClockbaitRoomVolume.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "ClockheadEntity.h"
+#include "Clockbait.h"
 #include "NavigationSystem.h"
 
 // Sets default values
 AAlarmClock::AAlarmClock()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 	
 	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
@@ -41,6 +44,12 @@ void AAlarmClock::TryActivate()
 		}
 		return;
 	}
+	if (AssignedEnemy->GetEntityState() == EEntityState::Frozen) return;
+	if (!OwningRoom) {
+		UE_LOG(LogClockbait, Warning, TEXT("No Room assigned to Alarm"));
+		return;
+	}
+	if (!OwningRoom->AreAllAlarmsOff()) return;
 	bOnCooldown = true;
 	float Dist = GetDistanceTo(AssignedEnemy);
 	if (Dist > EnemyProximityThreshold) {
@@ -53,6 +62,7 @@ void AAlarmClock::TryActivate()
 }
 
 void AAlarmClock::ActivateAlarm() {
+	bRinging = true;
 	MulticastPlayRingingSound();
 	if (AssignedEnemy) {
 		UE_LOG(LogTemp, Display, TEXT("AssignedEnemy set correctly"));
@@ -79,9 +89,17 @@ void AAlarmClock::ActivateAlarm() {
 }
 
 void AAlarmClock::DeactivateAlarm() {
-	if (AAIController* AIController = Cast<AAIController>(AssignedEnemy->GetController())) {
-		if (UBlackboardComponent* Blackboard = AIController->GetBlackboardComponent()) {
-			Blackboard->ClearValue(TEXT("AlarmLocation"));
+	bRinging = false;
+	if (AssignedEnemy)
+	{
+		if (AAIController* AIController = Cast<AAIController>(AssignedEnemy->GetController())) {
+			if (UBlackboardComponent* Blackboard = AIController->GetBlackboardComponent()) {
+				//Only clear the key if it is still ours, so silencing one alarm can't cancel another
+				if (Blackboard->GetValueAsObject(TEXT("Alarm")) == this) {
+					Blackboard->ClearValue(TEXT("AlarmLocation"));
+					Blackboard->ClearValue(TEXT("Alarm"));
+				}
+			}
 		}
 	}
 	if (!CooldownTimerHandle.IsValid()) {

@@ -6,6 +6,8 @@
 #include "ClockbaitPlayerController.h"
 #include "ClockbaitGameState.h"
 #include "Clockbait.h"
+#include "ClockbaitGameState.h"
+#include "Net/UnrealNetwork.h"
 
 AClockbaitGameMode::AClockbaitGameMode()
 {
@@ -36,6 +38,17 @@ void AClockbaitGameMode::PostLogin(APlayerController* NewPlayer)
 		*GetNameSafe(NewPlayer), GetNumPlayers());
 }
 
+void AClockbaitGameMode::ShowGameOverToAll()
+{
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AClockbaitPlayerController* PlayerController = Cast<AClockbaitPlayerController>(It->Get()))
+		{
+			PlayerController->ClientShowGameOver();
+		}
+	}
+}
+
 void AClockbaitGameMode::NotifyPlayerCaught(APawn* CaughtPawn)
 {
 	if (bGameOverTriggered)
@@ -44,20 +57,35 @@ void AClockbaitGameMode::NotifyPlayerCaught(APawn* CaughtPawn)
 	}
 	bGameOverTriggered = true;
 
-	UE_LOG(LogClockbait, Log, TEXT("NotifyPlayerCaught: '%s' was caught. Triggering game over for all players."),
-		*GetNameSafe(CaughtPawn));
+	UE_LOG(LogClockbait, Log, TEXT("NotifyPlayerCaught: '%s' was caught. Triggering game over for all players in %f seconds."),
+		*GetNameSafe(CaughtPawn), KillCamDuration);
 
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-	{
-		if (AClockbaitPlayerController* PlayerController = Cast<AClockbaitPlayerController>(It->Get()))
-		{
-			PlayerController->ClientShowGameOver();
-		}
-	}
+	GetWorldTimerManager().SetTimer(GameOverShowTimerHandle, this,
+		&AClockbaitGameMode::ShowGameOverToAll, KillCamDuration, false);
 
 }
 
 void AClockbaitGameMode::TravelToCurrentLevel()
 {
 	GetWorld()->ServerTravel("L_Main");
+}
+
+void AClockbaitGameMode::NotifyPlayerReady(APlayerController* PC)
+{
+	if (AClockbaitGameState* GS = GetGameState<AClockbaitGameState>()) {
+		if (PlayersReady.Contains(PC)) return;
+		PlayersReady.Add(PC);
+		GS->ReadyCount++;
+		const int32 NumPlayers = GetNumPlayers();
+		if (NumPlayers >= 2 && GS->ReadyCount >= NumPlayers) {
+			GetWorldTimerManager().SetTimer
+			(
+				GameOverResetTimerHandle,
+				this,
+				&AClockbaitGameMode::TravelToCurrentLevel,
+				GameOverResetDelay,
+				false
+			);
+		}
+	}
 }

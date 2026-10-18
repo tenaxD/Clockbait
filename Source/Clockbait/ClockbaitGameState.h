@@ -6,7 +6,16 @@
 #include "GameFramework/GameStateBase.h"
 #include "ClockbaitGameState.generated.h"
 
-/** Server-authoritative snapshot of one room's AI: where it is, and whether it's currently perceiving a player. */
+UENUM(BlueprintType)
+enum class EEntityState : uint8 {
+	Patrolling,
+	Investigating,
+	Chasing,
+	Alarm,
+	Frozen
+};
+
+/** Server-authoritative snapshot of one room's AI: where it is, and its state. */
 USTRUCT(BlueprintType)
 struct FClockbaitRoomAIState
 {
@@ -21,7 +30,7 @@ struct FClockbaitRoomAIState
 	FVector_NetQuantize10 AILocation;
 
 	UPROPERTY(BlueprintReadOnly)
-	bool bIsPerceivingPlayer = false;
+	EEntityState EnemyState = EEntityState::Patrolling;
 };
 
 /**
@@ -38,8 +47,11 @@ public:
 
 	/** Server-only: called every tick by BTService_UpdatePlayerLocation to publish where a room's AI currently is. */
 	UFUNCTION(BlueprintCallable, Category = "AI")
-	void UpdateRoomAIState(FName RoomId, FVector AILocation, bool bIsPerceivingPlayer);
+	void UpdateRoomAIState(FName RoomId, FVector AILocation, EEntityState AIState);
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	TArray<FClockbaitRoomAIState> RoomAIStates;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	uint8 ReadyCount{};
 };

@@ -8,6 +8,7 @@
 #include "ClockbaitRoomVolume.h"
 #include "ClockbaitCharacter.h"
 #include "ClockbaitGameState.h"
+#include "ClockheadEntity.h"
 #include "Clockbait.h"
 
 namespace
@@ -17,6 +18,7 @@ namespace
 	const FName LastKnownPlayerLocationKey(TEXT("LastKnownPlayerLocation"));
 	const FName TargetActorKey(TEXT("TargetActor"));
 	const FName RoomVolumeKey(TEXT("RoomVolume"));
+	const FName AlarmLocationKey(TEXT("AlarmLocation"));
 }
 
 UBTService_UpdatePlayerLocation::UBTService_UpdatePlayerLocation()
@@ -108,8 +110,11 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 		}
 	}
 
-	// Only refreshed while the target is truly perceived, so everything derived from it freezes
-	// the moment sight is lost instead of quietly following the player around walls.
+	//Refreshed if seen and if compromised under any hiding spots
+	if (!GenuineTarget && RoomVolume && RoomVolume->CompromisedPlayer) {
+		GenuineTarget = RoomVolume->CompromisedPlayer;
+	}
+
 	if (GenuineTarget)
 	{
 		FVector Projected;
@@ -149,6 +154,23 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 		Blackboard->ClearValue(PlayerLocationKey);
 		Blackboard->ClearValue(TargetActorKey);
 	}
+	//Setting the AI state
+	EEntityState State;
+	if (Blackboard->IsVectorValueSet(AlarmLocationKey)) {
+		State = EEntityState::Alarm;
+	}
+	else if (GenuineTarget) {
+		State = EEntityState::Chasing;
+	}
+	else if (!GenuineTarget && Blackboard->IsVectorValueSet(LastKnownPlayerLocationKey)) {
+		State = EEntityState::Investigating;
+	}
+	else {
+		State = EEntityState::Patrolling;
+	}
+	if (AClockheadEntity* Entity = AIController->GetPawn<AClockheadEntity>()) {
+		Entity->SetEntityState(State);
+	}
 
 	// Publish this room's AI position to the informant's minimap. Only possible once RoomVolume is
 	// configured, since that's what tells us which room's entry to update in GameState.
@@ -156,7 +178,7 @@ void UBTService_UpdatePlayerLocation::TickNode(UBehaviorTreeComponent& OwnerComp
 	{
 		if (AClockbaitGameState* GameState = AIController->GetWorld()->GetGameState<AClockbaitGameState>())
 		{
-			GameState->UpdateRoomAIState(RoomVolume->RoomId, AILocation, GenuineTarget != nullptr);
+			GameState->UpdateRoomAIState(RoomVolume->RoomId, AILocation, State);
 		}
 	}
 }

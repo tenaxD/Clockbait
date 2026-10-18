@@ -40,11 +40,20 @@ public:
 	void MulticastStopRingingSound();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	APawn* AssignedEnemy = nullptr;
+	class AClockheadEntity* AssignedEnemy = nullptr;
+
+	bool IsRinging() const { return bRinging; }
+
+	void SetOwningRoom(class AClockbaitRoomVolume* Room) { OwningRoom = Room; }
 
 protected:
 
 	bool bOnCooldown{ false };
+	bool bRinging{ false };
+
+	UPROPERTY()
+	class AClockbaitRoomVolume* OwningRoom = nullptr;
+
 	FTimerHandle CooldownTimerHandle;
 
 	void OnCooldownExpired();

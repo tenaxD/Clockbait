@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "ClockbaitRoomVolume.h"
 #include "PuzzleController.h"
+#include "Kismet/GameplayStatics.h"
 #include "Clockbait.h"
 
 // Sets default values
@@ -15,6 +16,8 @@ APuzzleStation::APuzzleStation()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+
 	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
 
@@ -37,7 +40,8 @@ void APuzzleStation::Confirm()
 	{
 		if (PuzzleController)
 		{
-			PuzzleController->NotifyStationFailed(this);
+			PuzzleController->NotifyStationFailed(this, OccupyingPlayer);
+			ExitPuzzle(OccupyingPlayer);
 		}
 		return;
 	}
@@ -96,6 +100,9 @@ void APuzzleStation::EnterPuzzle(APawn* PlayerRef)
 		PC->EnterPuzzleMode(this, InteractionLockTime);
 		Character->GetCharacterMovement()->DisableMovement();
 	}
+}
+void APuzzleStation::PlayBuzzerSound_Implementation() {
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), BuzzerSound, GetActorLocation());
 }
 
 void APuzzleStation::ExitPuzzle(APawn* PlayerRef)

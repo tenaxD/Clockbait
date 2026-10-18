@@ -48,6 +48,13 @@ void AClockbaitPlayerController::ServerRequestRestart_Implementation()
 	
 }
 
+void AClockbaitPlayerController::ServerSetReady_Implementation()
+{
+	if (AClockbaitGameMode* GM = GetWorld()->GetAuthGameMode<AClockbaitGameMode>()) {
+		GM->NotifyPlayerReady(this);
+	}
+}
+
 void AClockbaitPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -67,16 +74,16 @@ void AClockbaitPlayerController::BeginPlay()
 		} else {
 
 			UE_LOG(LogClockbait, Error, TEXT("Could not spawn mobile controls widget."));
-
 		}
 
 	}
-	if (IsLocalPlayerController() && TabletWidgetClass) {
-		TabletWidget = CreateWidget<UTabletWidget>(this, TabletWidgetClass);
-		if (!TabletWidget) return;
-		TabletWidget->AddToViewport();
-		TabletWidget->SetVisibility(ESlateVisibility::Collapsed);
-	}
+	// add player hud
+	if (!IsLocalPlayerController()) return;
+	HudWidget = CreateWidget<UUserWidget>(this, HudWidgetClass);
+	if (!HudWidget) return;
+	HudWidget->AddToPlayerScreen(0);
+	this->SetShowMouseCursor(false);
+	this->SetInputMode(FInputModeGameOnly());
 }
 
 void AClockbaitPlayerController::ClientShowGameOver_Implementation()
@@ -112,14 +119,3 @@ void AClockbaitPlayerController::SetupInputComponent()
 	
 }
 
-void AClockbaitPlayerController::OpenTablet()
-{
-	if (!TabletWidget) return;
-	TabletWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
-}
-
-void AClockbaitPlayerController::CloseTablet()
-{
-	if (!TabletWidget) return;
-	TabletWidget->SetVisibility(ESlateVisibility::Collapsed);
-}

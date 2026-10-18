@@ -13,6 +13,13 @@
 #include "Interactable.h"
 #include "Clockbait.h"
 #include "DrawDebugHelpers.h"
+#include "Components/PointLightComponent.h"
+#include "Components/WidgetComponent.h"
+#include "TabletWidget.h"
+#include "ClockbaitRoomVolume.h"
+#include "ClockbaitGameState.h"
+#include "TabletWidget.h"
+#include "ClockbaitPlayerController.h"
 #include "HidingSpot.h"
 
 AClockbaitCharacter::AClockbaitCharacter()
@@ -37,6 +44,38 @@ AClockbaitCharacter::AClockbaitCharacter()
 	FirstPersonCameraComponent->bEnableFirstPersonScale = true;
 	FirstPersonCameraComponent->FirstPersonFieldOfView = 70.0f;
 	FirstPersonCameraComponent->FirstPersonScale = 0.6f;
+
+	TabletMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Tablet Mesh"));
+	TabletMesh->SetupAttachment(FirstPersonCameraComponent);
+	TabletMesh->SetRelativeLocationAndRotation(LoweredLocation, LoweredRotation);
+	TabletMesh->SetOnlyOwnerSee(true);
+	TabletMesh->SetHiddenInGame(true);
+	TabletMesh->SetCollisionProfileName(FName("NoCollision"));
+	TabletMesh->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::FirstPerson;
+
+	TabletScreen = CreateDefaultSubobject<UWidgetComponent>(TEXT("Tablet Screen"));
+	TabletScreen->SetupAttachment(TabletMesh);
+	TabletScreen->SetWidgetSpace(EWidgetSpace::World);
+	TabletScreen->SetDrawSize(FVector2D(900.0f, 1200.0f));
+	TabletScreen->SetRelativeScale3D(FVector(0.0133333f));
+	TabletScreen->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TabletScreen->SetOnlyOwnerSee(true);
+	TabletScreen->SetVisibility(false);
+	TabletScreen->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::FirstPerson;
+	TabletScreen->SetWindowFocusable(false);
+	TabletScreen->SetTintColorAndOpacity(FLinearColor(1.5f, 1.5f, 1.5f, 1.0f));
+
+	TabletLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("Tablet Light"));
+	TabletLight->SetupAttachment(FirstPersonCameraComponent);
+	TabletLight->SetRelativeLocation(FVector(25.0f, 0.0f, 15.0f));
+	TabletLight->LightingChannels.bChannel0 = false;
+	TabletLight->LightingChannels.bChannel1 = true;
+	TabletLight->AttenuationRadius = 120.0f;
+	TabletLight->CastShadows = false;
+	TabletLight->SetVisibility(false);
+
+	TabletMesh->LightingChannels.bChannel0 = false;
+	TabletMesh->LightingChannels.bChannel1 = true;
 
 	//Create the Spot Light Component
 	Flashlight = CreateDefaultSubobject<USpotLightComponent>(TEXT("Flashlight"));
@@ -72,9 +111,6 @@ void AClockbaitCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AClockbaitCharacter::DoJumpStart);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AClockbaitCharacter::DoJumpEnd);
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AClockbaitCharacter::MoveInput);
@@ -84,6 +120,8 @@ void AClockbaitCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AClockbaitCharacter::LookInput);
 
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AClockbaitCharacter::Interact);
+
+		EnhancedInputComponent->BindAction(ToggleTabletAction, ETriggerEvent::Started, this, &AClockbaitCharacter::ToggleTablet);
 	}
 	else
 	{
@@ -121,8 +159,45 @@ void AClockbaitCharacter::PerformInteractionTrace()
 
 void AClockbaitCharacter::Interact()
 {
-	if (!FocusedActor && !bIsHiddenFromAI) return;
+	if (bTabletRaised) return;
+	if (!FocusedActor && !CurrentHidingSpot) return;
 	ServerInteract(FocusedActor);
+}
+
+void AClockbaitCharacter::ToggleTablet()
+{
+	if (!bHasTablet) return;
+
+	if (!bTabletRaised) {
+		TabletMesh->SetHiddenInGame(false);
+		TabletMesh->SetRelativeLocationAndRotation(RaisedLocation, RaisedRotation);
+		if (UTabletWidget* Tablet = Cast<UTabletWidget>(TabletScreen->GetWidget())) {
+			Tablet->ResetEntityPosition();
+		}
+		TabletScreen->SetVisibility(true);
+		TabletLight->SetVisibility(true);
+		bTabletRaised = true;
+	}
+	else {
+		TabletMesh->SetHiddenInGame(true);
+		TabletMesh->SetRelativeLocationAndRotation(LoweredLocation, LoweredRotation);
+		TabletScreen->SetVisibility(false);
+		TabletLight->SetVisibility(false);
+		bTabletRaised = false;
+	}
+}
+
+bool AClockbaitCharacter::IsRoomEntityChasing() const
+{
+	if (!CurrentRoom) { return false; }
+	AClockbaitGameState* GS = GetWorld()->GetGameState<AClockbaitGameState>();
+	if (!GS) { return false; }
+	FName Id = CurrentRoom->RoomId;
+	FClockbaitRoomAIState* RoomState = GS->RoomAIStates.FindByPredicate([Id](const FClockbaitRoomAIState& State)
+		{
+			return State.RoomId == Id;
+		});
+	return RoomState && RoomState->EnemyState == EEntityState::Chasing;
 }
 
 void AClockbaitCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -130,6 +205,7 @@ void AClockbaitCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AClockbaitCharacter, bIsHiddenFromAI);
+	DOREPLIFETIME(AClockbaitCharacter, CurrentHidingSpot);
 }
 
 
@@ -158,6 +234,10 @@ void AClockbaitCharacter::SetHiddenFromAI(bool bNewHiddenFromAI)
 	{
 		return;
 	}
+	if (bNewHiddenFromAI && IsRoomEntityChasing()) {
+		MarkCompromised();
+		return;
+	}
 
 	bIsHiddenFromAI = bNewHiddenFromAI;
 	OnRep_IsHiddenFromAI(); // OnRep only fires on clients; call it manually so the server also runs the cosmetic event
@@ -166,6 +246,42 @@ void AClockbaitCharacter::SetHiddenFromAI(bool bNewHiddenFromAI)
 void AClockbaitCharacter::ToggleFlashlight(bool bTurnOn)
 {
 	Flashlight->SetVisibility(bTurnOn);
+}
+
+void AClockbaitCharacter::ClientPlayKillCam_Implementation(AClockheadEntity* Killer, FRotator LookRot)
+{
+	if (AClockbaitPlayerController* PC = Cast<AClockbaitPlayerController>(GetController())) {
+		PC->ExitPuzzleMode(0.1f); //Exitting with a 0.1s blend time so it's not that snappy
+		PC->SetControlRotation(LookRot);
+		DisableInput(PC);
+	}
+	OnKillCam(Killer);
+}
+
+void AClockbaitCharacter::SetTabletSignal(bool bNewSignal)
+{
+	bTabletHasSignal = bNewSignal;
+	
+	if (UTabletWidget* Widget = Cast<UTabletWidget>(TabletScreen->GetWidget())) {
+		Widget->SetSignal(bTabletHasSignal);
+	}
+}
+
+void AClockbaitCharacter::MarkCompromised()
+{
+	if (CurrentRoom) {
+		CurrentRoom->CompromisedPlayer = this;
+	}
+}
+
+void AClockbaitCharacter::ClearCompromised()
+{
+	if (CurrentRoom) {
+		CurrentRoom->CompromisedPlayer = nullptr;
+	}
+	else {
+		UE_LOG(LogClockbait, Warning, TEXT("ClearCompromised: '%s' has no CurrentRoom, so a burned hiding spot may stay flagged and the AI keeps a free fix on this player"), *GetNameSafe(this));
+	}
 }
 
 void AClockbaitCharacter::ClientLockLookRotation_Implementation()
@@ -225,15 +341,4 @@ void AClockbaitCharacter::DoMove(float Right, float Forward)
 	}
 }
 
-void AClockbaitCharacter::DoJumpStart()
-{
-	// pass Jump to the character
-	Jump();
-}
-
-void AClockbaitCharacter::DoJumpEnd()
-{
-	// pass StopJumping to the character
-	StopJumping();
-}
 

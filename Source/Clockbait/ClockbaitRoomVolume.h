@@ -23,8 +23,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Room")
 	FName RoomId;
 
-	UPROPERTY(EditAnywhere, Category = "Room")
+	UPROPERTY(EditAnywhere, Category = "Room", ReplicatedUsing = OnRep_IsRoomDark)
 	bool bIsRoomDark = false;
+
+	UPROPERTY(EditAnywhere, Category = "Room")
+	class AClockheadEntity* BoundEntity{ nullptr };
 
 	UPROPERTY(EditAnywhere, Category = "Room")
 	class AAutomaticDoor* EntranceDoor{ nullptr };
@@ -34,6 +37,15 @@ public:
 
 	UPROPERTY()
 	class APuzzleController* PuzzleController{ nullptr };
+
+	UPROPERTY()
+	class AClockbaitCharacter* CompromisedPlayer{ nullptr };
+
+	UPROPERTY(EditInstanceOnly, Category = "Room")
+	TArray<class AAlarmClock*> RoomAlarms;
+
+	UPROPERTY(EditInstanceOnly, Category = "Room")
+	TArray<class AHidingSpot*> RoomHidingSpots;
 
 	UPROPERTY()
 	bool bPuzzleSolved{ false };
@@ -72,7 +84,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Room")
 	bool HasPlayerInside() const;
 
+	bool AreAllAlarmsOff();
+protected:
+	virtual void BeginPlay() override;
+
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
+
+	UFUNCTION()
+	void OnRep_IsRoomDark();
+
+	UPROPERTY(EditInstanceOnly, Category = "Room")
+	TArray<AActor*> RoomLights;
+
+	UPROPERTY(EditAnywhere)
+	float EntityFreezeTime{ 20.0f };
+
+	//Needs blueprint. Will be used for toggling lights, playing sounds etc.
+	/*UFUNCTION(BlueprintImplementableEvent, Category = "Room")
+	void OnRoomDarkChanged(bool bNewDark);*/
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void GetPlayersInside(TArray<AClockbaitCharacter*>& OutPlayers) const;
 
 };

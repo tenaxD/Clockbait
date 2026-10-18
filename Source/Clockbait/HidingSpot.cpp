@@ -7,7 +7,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Clockbait.h"
-#include "NavigationSystem.h"
+#include "Components/CapsuleComponent.h"
 
 AHidingSpot::AHidingSpot()
 {
@@ -84,20 +84,35 @@ void AHidingSpot::ExitHiding(APawn* RequestingPawn)
 		return;
 	}
 
-	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-	if (!NavSys)
+	const float HalfHeight = Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const float Radius = Character->GetCapsuleComponent()->GetScaledCapsuleRadius();
+
+	FVector ExitDir = Character->GetFirstPersonCameraComponent()->GetForwardVector().GetSafeNormal2D();
+	if (ExitDir.IsNearlyZero())
 	{
-		UE_LOG(LogClockbait, Warning, TEXT("Can't leave the hiding spot: no navigation system."));
-		return;
+		ExitDir = GetActorForwardVector().GetSafeNormal2D();
 	}
 
-	const FVector Start = Character->GetFirstPersonCameraComponent()->GetComponentLocation();
-	const FVector End = Start + Character->GetFirstPersonCameraComponent()->GetForwardVector().GetSafeNormal2D() * HidingExitDist;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	Params.AddIgnoredActor(Character);
 
-	FNavLocation NavLoc;
-	if (!NavSys->ProjectPointToNavigation(End, NavLoc, FVector{ 10.0f, 10.0f, 500.0f }))
+	//Walk outwards from the spot itself, not from the player - while hidden they sit under the floor
+	const FVector ProbeStart = GetActorLocation() + FVector(0.0f, 0.0f, HalfHeight);
+	FVector ExitXY = ProbeStart + ExitDir * HidingExitDist;
+
+	FHitResult WallHit;
+	if (GetWorld()->LineTraceSingleByChannel(WallHit, ProbeStart, ExitXY, ECC_Visibility, Params))
 	{
-		UE_LOG(LogClockbait, Warning, TEXT("Can't leave because PlayerExitPosition cannot be translated to NavMesh"));
+		ExitXY = WallHit.ImpactPoint - ExitDir * Radius;
+	}
+
+	FHitResult FloorHit;
+	if (!GetWorld()->LineTraceSingleByChannel(FloorHit,
+		ExitXY + FVector(0.0f, 0.0f, HalfHeight),
+		ExitXY - FVector(0.0f, 0.0f, 500.0f), ECC_Visibility, Params))
+	{
+		UE_LOG(LogClockbait, Warning, TEXT("Can't leave '%s': no floor under the exit point"), *GetNameSafe(this));
 		return;
 	}
 
@@ -106,10 +121,11 @@ void AHidingSpot::ExitHiding(APawn* RequestingPawn)
 	OccupyingPawn = nullptr;
 
 	Character->SetHiddenFromAI(false);
-	Character->SetActorLocation(NavLoc.Location);
+	Character->SetActorLocation(FloorHit.ImpactPoint + FVector(0.0f, 0.0f, HalfHeight));
 	Character->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 	Character->ClientUnlockLookRotation();
 	Character->CurrentHidingSpot = nullptr;
+	Character->ClearCompromised();
 	UE_LOG(LogClockbait, Display, TEXT("Exit from Hiding Spot succeeded"));
 
 	OnRep_OccupyingPawn();

@@ -34,10 +34,6 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ExitPuzzleMode(float InteractionBlockTime);
 
-	void OpenTablet();
-
-	void CloseTablet();
-
 protected:
 
 	/** Implemented in Blueprint: runs on this client, shows WBP_LossScreen / existing game over logic */
@@ -46,6 +42,9 @@ protected:
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "GameOver")
 	void ServerRequestRestart();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerSetReady();
 
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
@@ -62,11 +61,10 @@ protected:
 	/** Pointer to the mobile controls widget */
 	TObjectPtr<UUserWidget> MobileControlsWidget;
 
-	UPROPERTY(EditAnywhere)
-	TSubclassOf<class UTabletWidget> TabletWidgetClass;
+	UPROPERTY(EditAnywhere, Category = "HUD")
+	TSubclassOf<UUserWidget> HudWidgetClass;
 
-	UPROPERTY()
-	class UTabletWidget* TabletWidget;
+	TObjectPtr<UUserWidget> HudWidget;
 
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;

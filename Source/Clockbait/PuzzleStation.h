@@ -24,12 +24,26 @@ public:
 
 	virtual bool CheckSolution() const PURE_VIRTUAL(APuzzleStation::CheckSolution, return false;)
 
+	UFUNCTION(NetMulticast, Reliable)
+	void PlayBuzzerSound();
+
 	class AClockbaitRoomVolume* GetRoom() const { return Room; }
 
 	virtual void Interact_Implementation(APawn* Interactor) override;
 
 	/** Buttons stop responding once the station is solved, so the arrangement can't be undone while the pair escapes. */
 	bool AreButtonsLocked() const { return bButtonsLocked; }
+
+	UPROPERTY(EditDefaultsOnly, Category = "Map")
+	class UTexture2D* MapIcon = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Map")
+	FVector2D MapIconSize{ 32.0f, 16.0f };
+
+	//Base orientation of the drawn icon, added on top of the station's world yaw
+	UPROPERTY(EditDefaultsOnly, Category = "Map")
+	float MapIconAngleOffset = 0.0f;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -46,6 +60,9 @@ protected:
 	/** The room this station belongs to. Asked to open its exit on success - the door pointer itself lives on the room. */
 	UPROPERTY(EditAnywhere, Category = "Puzzle")
 	class AClockbaitRoomVolume* Room{ nullptr };
+
+	UPROPERTY(EditDefaultsOnly, Category = "Audio")
+	class USoundBase* BuzzerSound = nullptr;
 
 	UPROPERTY()
 	APawn* OccupyingPlayer{ nullptr };

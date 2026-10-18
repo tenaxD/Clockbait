@@ -15,3 +15,6 @@ Content/
 # OS / editor cruft
 .idea/
 *.user
+
+# Cooker-generated open-order logs from packaging
+Build/*/FileOpenOrder/

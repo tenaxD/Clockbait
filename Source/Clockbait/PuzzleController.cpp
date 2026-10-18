@@ -5,7 +5,9 @@
 #include "PuzzleStation.h"
 #include "ColorPuzzleStation.h"
 #include "ClockbaitRoomVolume.h"
-#include "ClockbaitRoomVolume.h"
+#include "ClockheadEntity.h"
+#include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Clockbait.h"
 
 // Sets default values
@@ -43,13 +45,31 @@ void APuzzleController::NotifyStationSolved(APuzzleStation* Station)
 	}
 }
 
-void APuzzleController::NotifyStationFailed(APuzzleStation* Station)
+void APuzzleController::NotifyStationFailed(APuzzleStation* Station, APawn* PlayerPawn)
 {
 	if (!HasAuthority() || bSegmentComplete) {
 		return;
 	}
-
 	// Shared attempt counter, failure sound and the AI speed-up in both rooms belong here.
+	if (!PlayerPawn) {
+		UE_LOG(LogClockbait, Warning, TEXT("PlayerPawn is invalid when passing to NotifyStationFailed"));
+		return;
+	}
+	if (!Station) {
+		UE_LOG(LogClockbait, Warning, TEXT("Station is invalid when passing to NotifyStationFailed"));
+		return;
+	}
+	Station->PlayBuzzerSound();
+	
+	AClockbaitRoomVolume* Room = Station->GetRoom();
+	if (!Room) return;
+	AClockheadEntity* Entity = Room->BoundEntity;
+	if (!Entity) return;
+	AAIController* AIC = Entity->GetController<AAIController>();
+	if (!AIC) return;
+	UBlackboardComponent* Blackboard = AIC->GetBlackboardComponent();
+	if (!Blackboard) return;
+	Blackboard->SetValueAsVector(FName("LastKnownPlayerLocation"), PlayerPawn->GetActorLocation());
 }
 
 void APuzzleController::NotifyRoomVacated(AClockbaitRoomVolume* Room)

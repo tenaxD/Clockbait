@@ -18,7 +18,7 @@ public:
 
 	void NotifyStationSolved(class APuzzleStation* Station);
 
-	void NotifyStationFailed(class APuzzleStation* Station);
+	void NotifyStationFailed(class APuzzleStation* Station, APawn* PlayerPawn);
 
 	void NotifyRoomVacated(class AClockbaitRoomVolume* Room);
 

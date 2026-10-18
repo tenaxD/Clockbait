@@ -5,10 +5,12 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "ClockbaitRoomVolume.h"	
 #include "ClockbaitCharacter.generated.h"
 
 class UInputComponent;
 class USkeletalMeshComponent;
+class AClockheadEntity;
 class USpotLightComponent;
 class UCameraComponent;
 class UInputAction;
@@ -34,11 +36,21 @@ class AClockbaitCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	USpotLightComponent* Flashlight;
 
-protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UStaticMeshComponent* TabletMesh;
 
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	UInputAction* JumpAction;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class UWidgetComponent* TabletScreen;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	class UPointLightComponent* TabletLight;
+
+	/*
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UTabletWidget> TabletWidgetClass;
+	*/
+
+protected:
 
 	/** Move Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
@@ -54,6 +66,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category ="Input")
 	class UInputAction* InteractAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	class UInputAction* ToggleTabletAction;
 	
 public:
 	AClockbaitCharacter();
@@ -83,6 +98,19 @@ public:
 	UFUNCTION(Client, Reliable, Category = "Hiding")
 	void ClientUnlockLookRotation();
 
+	UFUNCTION(Client, Reliable)
+	void ClientPlayKillCam(AClockheadEntity* Killer, FRotator LookRot);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Kill")
+	void OnKillCam(AClockheadEntity* Killer);
+
+	void SetTabletSignal(bool bNewSignal);
+
+	void SetCurrentRoom(AClockbaitRoomVolume* RoomToSet) { CurrentRoom = RoomToSet; }
+
+	void MarkCompromised();
+
+	void ClearCompromised();
 
 protected:
 
@@ -112,13 +140,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoMove(float Right, float Forward);
 
-	/** Handles jump start inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpStart();
-
-	/** Handles jump end inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpEnd();
 
 	UPROPERTY(EditAnywhere)
 	float maxInteractionDist{ 100.0f };
@@ -126,6 +147,24 @@ protected:
 	UPROPERTY(EditAnywhere)
 	float InteractionSphereRadius{ 30.0f };
 
+	UPROPERTY(EditAnywhere) 
+	FVector RaisedLocation;
+
+	UPROPERTY(EditAnywhere) 
+	FRotator RaisedRotation;
+
+	UPROPERTY(EditAnywhere) 
+	FVector LoweredLocation;
+
+	UPROPERTY(EditAnywhere) 
+	FRotator LoweredRotation;
+
+	bool bTabletRaised{ false };
+
+	UPROPERTY(EditAnywhere) //Editable for now for testing only
+	bool bHasTablet{ false };
+
+	bool bTabletHasSignal{ false };
 
 protected:
 
@@ -142,7 +181,7 @@ public:
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
 	//Holding player's hiding spot to exit without checking FocusedActor
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, Replicated)
 	class AHidingSpot* CurrentHidingSpot{ nullptr };
 
 private:
@@ -152,6 +191,13 @@ private:
 
 	AActor* FocusedActor = nullptr;
 
+	UPROPERTY()
+	AClockbaitRoomVolume* CurrentRoom{ nullptr };
+
 	void Interact();
+
+	void ToggleTablet();
+
+	bool IsRoomEntityChasing() const;
 };
 
