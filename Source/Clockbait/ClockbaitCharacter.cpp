@@ -143,10 +143,6 @@ void AClockbaitCharacter::PerformInteractionTrace()
 		AActor* HitActor = HitResult.GetActor();
 		if (HitActor && HitActor->Implements<UInteractable>()) {
 			FocusedActor = HitActor;
-			//printing focused actor name to the screen
-			if (GEngine) {
-				GEngine->AddOnScreenDebugMessage(1, 1.0f, FColor::Yellow, FString::Printf(TEXT("Hit actor: %s"), *GetNameSafe(HitActor)));
-			}
 		}
 		else {
 			FocusedActor = nullptr;

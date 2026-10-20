@@ -11,6 +11,9 @@
 #include "ClockheadEntity.h"
 #include "AlarmClock.h"
 #include "ClockbaitPlayerController.h"
+#include "Components/StaticMeshComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 AClockbaitRoomVolume::AClockbaitRoomVolume()
 {
@@ -51,6 +54,7 @@ void AClockbaitRoomVolume::MarkPuzzleSolved()
 {
 	SetExitLocked(false);
 	bPuzzleSolved = true;
+	OnRep_PuzzleSolved();
 	if (bIsRoomDark) {
 		bIsRoomDark = false;
 		OnRep_IsRoomDark();
@@ -157,13 +161,68 @@ void AClockbaitRoomVolume::OnRep_IsRoomDark()
 	{
 		if (Light) { Light->SetActorHiddenInGame(bIsRoomDark); }
 	}
+	if (!bIsRoomDark && LightsOnSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, LightsOnSound, GetActorLocation());
+	}
 	/*OnRoomDarkChanged(bIsRoomDark);*/
+}
+
+void AClockbaitRoomVolume::SetStationSolved()
+{
+	if (!HasAuthority() || bStationSolved) { return; }
+	bStationSolved = true;
+	OnRep_RefreshIndicators(); //OnRep only fires on clients, so the server updates its own lamps
+}
+
+void AClockbaitRoomVolume::SetTriesCount(int32 NewTriesCount)
+{
+	if (!HasAuthority() || TriesCount == NewTriesCount) { return; }
+	TriesCount = NewTriesCount;
+	OnRep_RefreshIndicators();
+}
+
+void AClockbaitRoomVolume::OnRep_RefreshIndicators()
+{
+	//Every lamp gets a colour derived from the current state, so the row is always complete
+	//no matter which of the two replicated values arrived, or in what order.
+	for (int32 i = 0; i < RoomIndicators.Num(); ++i)
+	{
+		AActor* Indicator = RoomIndicators[i];
+		if (!Indicator)
+		{
+			UE_LOG(LogClockbait, Warning, TEXT("Room '%s': RoomIndicators slot %d is empty"), *RoomId.ToString(), i);
+			continue;
+		}
+
+		UStaticMeshComponent* Mesh = Indicator->GetComponentByClass<UStaticMeshComponent>();
+		if (!Mesh) { continue; }
+
+		UMaterialInstanceDynamic* MID = Mesh->CreateAndSetMaterialInstanceDynamic(IndicatorGlassSlot);
+		if (!MID) { continue; }
+
+		FLinearColor LampColor = FLinearColor::Black;
+		if (bStationSolved) { LampColor = LampColorGreen; }
+		else if (i <= TriesCount) { LampColor = LampColorRed; }
+
+		MID->SetVectorParameterValue(TEXT("LampColor"), LampColor);
+	}
+}
+
+
+void AClockbaitRoomVolume::OnRep_PuzzleSolved() {
+	if (PuzzleSolvedSound) {
+		UGameplayStatics::PlaySoundAtLocation(this, PuzzleSolvedSound, GetActorLocation());
+	}
 }
 
 void AClockbaitRoomVolume::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AClockbaitRoomVolume, bIsRoomDark);
+	DOREPLIFETIME(AClockbaitRoomVolume, TriesCount);
+	DOREPLIFETIME(AClockbaitRoomVolume, bStationSolved);
+	DOREPLIFETIME(AClockbaitRoomVolume, bPuzzleSolved);
 }
 
 void AClockbaitRoomVolume::GetPlayersInside(TArray<AClockbaitCharacter*>& OutPlayers) const

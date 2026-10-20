@@ -31,6 +31,8 @@ protected:
 
 	bool bSegmentComplete{ false };
 
+	int32 TriesCount{ -1 };
+
 	UPROPERTY(EditAnywhere)
 	TMap<EPuzzleSymbol, EPuzzleColor> FinalSolution;
 public:	

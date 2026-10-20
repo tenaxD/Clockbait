@@ -12,7 +12,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 
 namespace {
-	const FName TargetActorKey(TEXT("TargetActor"));
+	const FName CatchTargetActorKey(TEXT("TargetActor"));
 }
 
 UBTService_CatchPlayer::UBTService_CatchPlayer()
@@ -54,11 +54,11 @@ void UBTService_CatchPlayer::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* 
 	if (Entity->GetEntityState() != EEntityState::Chasing && Entity->GetEntityState() != EEntityState::Alarm) return;
 	
 
-	APawn* Target = Cast<APawn>(Blackboard->GetValueAsObject(TargetActorKey));
+	APawn* Target = Cast<APawn>(Blackboard->GetValueAsObject(CatchTargetActorKey));
 	if (!Target) return;
 
 	float DistSq = FVector::DistSquared2D(AIPawn->GetActorLocation(), Target->GetActorLocation());
-	UE_LOG(LogClockbait, Display, TEXT("Distance squared: %f"), DistSq);
+	/*UE_LOG(LogClockbait, Display, TEXT("Distance squared: %f"), DistSq);*/
 
 	if (Entity->GetEntityState() == EEntityState::Chasing) {
 		AClockbaitCharacter* TargetChar = Cast<AClockbaitCharacter>(Target);

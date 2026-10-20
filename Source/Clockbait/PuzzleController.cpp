@@ -7,7 +7,9 @@
 #include "ClockbaitRoomVolume.h"
 #include "ClockheadEntity.h"
 #include "AIController.h"
+#include "Net/UnrealNetwork.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "ClockbaitRoomVolume.h"
 #include "Clockbait.h"
 
 // Sets default values
@@ -15,13 +17,20 @@ APuzzleController::APuzzleController()
 {
 	 // Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
-
+	bReplicates = true;
 }
+
 
 void APuzzleController::NotifyStationSolved(APuzzleStation* Station)
 {
 	if (!HasAuthority() || bSegmentComplete) {
 		return;
+	}
+
+	//Green is per room: this one is done even if the partner's station is not
+	if (Station)
+	{
+		if (AClockbaitRoomVolume* SolvedRoom = Station->GetRoom()) { SolvedRoom->SetStationSolved(); }
 	}
 
 	for (auto i = 0; i < Stations.Num(); ++i) {
@@ -60,7 +69,13 @@ void APuzzleController::NotifyStationFailed(APuzzleStation* Station, APawn* Play
 		return;
 	}
 	Station->PlayBuzzerSound();
-	
+	TriesCount++;
+	for (auto i = 0; i < Stations.Num(); ++i) {
+		if (!Stations[i]) continue;
+		AClockbaitRoomVolume* Room = Stations[i]->GetRoom();
+		if (!Room) continue;
+		Room->SetTriesCount(TriesCount);
+	}
 	AClockbaitRoomVolume* Room = Station->GetRoom();
 	if (!Room) return;
 	AClockheadEntity* Entity = Room->BoundEntity;
@@ -121,6 +136,7 @@ void APuzzleController::BeginPlay()
 		}
 	}
 }
+
 
 // Called every frame
 void APuzzleController::Tick(float DeltaTime)

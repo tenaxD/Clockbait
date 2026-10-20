@@ -47,8 +47,18 @@ public:
 	UPROPERTY(EditInstanceOnly, Category = "Room")
 	TArray<class AHidingSpot*> RoomHidingSpots;
 
-	UPROPERTY()
+	UPROPERTY(EditInstanceOnly, Category = "Room")
+	TArray<AActor*> RoomIndicators;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PuzzleSolved)
 	bool bPuzzleSolved{ false };
+
+	//This room's own station, not the segment - the other room may still be unsolved
+	UPROPERTY(ReplicatedUsing = OnRep_RefreshIndicators)
+	bool bStationSolved{ false };
+
+	UPROPERTY(ReplicatedUsing = OnRep_RefreshIndicators)
+	int32 TriesCount{ -1 };
 
 	//The room gets sealed meaning there is no coming back once both players exit after completing the puzzle
 	UPROPERTY()
@@ -85,6 +95,10 @@ public:
 	bool HasPlayerInside() const;
 
 	bool AreAllAlarmsOff();
+
+	void SetStationSolved();
+
+	void SetTriesCount(int32 NewTriesCount);
 protected:
 	virtual void BeginPlay() override;
 
@@ -94,11 +108,34 @@ protected:
 	UFUNCTION()
 	void OnRep_IsRoomDark();
 
+	UFUNCTION()
+	void OnRep_RefreshIndicators();
+
+	UFUNCTION()
+	void OnRep_PuzzleSolved();
+
 	UPROPERTY(EditInstanceOnly, Category = "Room")
 	TArray<AActor*> RoomLights;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Indicators")
+	int32 IndicatorGlassSlot{ 0 };
+
+	UPROPERTY(EditDefaultsOnly, Category = "Indicators")
+	FLinearColor LampColorGreen{ 0.022, 0.661, 0.0 };
+
+	UPROPERTY(EditDefaultsOnly, Category = "Indicators")
+	FLinearColor LampColorRed{ 0.865, 0.0, 0.012 };
+
+	
+
 	UPROPERTY(EditAnywhere)
 	float EntityFreezeTime{ 20.0f };
+
+	UPROPERTY(EditInstanceOnly, Category = "Room")
+	class USoundBase* LightsOnSound = nullptr;
+
+	UPROPERTY(EditInstanceOnly, Category = "Room")
+	class USoundBase* PuzzleSolvedSound = nullptr;
 
 	//Needs blueprint. Will be used for toggling lights, playing sounds etc.
 	/*UFUNCTION(BlueprintImplementableEvent, Category = "Room")

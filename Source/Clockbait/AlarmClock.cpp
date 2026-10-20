@@ -39,9 +39,6 @@ void AAlarmClock::Tick(float DeltaTime)
 void AAlarmClock::TryActivate()
 {
 	if (bOnCooldown || !AssignedEnemy) {
-		if (GEngine) {
-			GEngine->AddOnScreenDebugMessage(1, 1.0f, FColor::Red, FString::Printf(TEXT("Alarm on cooldown or there is no assigned enemy")));
-		}
 		return;
 	}
 	if (AssignedEnemy->GetEntityState() == EEntityState::Frozen) return;

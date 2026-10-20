@@ -51,9 +51,6 @@ void AHidingSpot::EnterHiding(APawn* RequestingPawn)
 		return;
 	}
 
-	if (GEngine) {
-		GEngine->AddOnScreenDebugMessage(1, 1.0f, FColor::Yellow, FString::Printf(TEXT("Player %s is now hidden"), *GetNameSafe(RequestingPawn)));
-	}
 	OccupyingPawn = RequestingPawn;
 
 	// Set directly in C++ (not via the BlueprintImplementableEvent below) because AI perception

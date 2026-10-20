@@ -6,8 +6,8 @@
 #include "ClockbaitPlayerController.h"
 #include "ClockbaitGameState.h"
 #include "Clockbait.h"
-#include "ClockbaitGameState.h"
 #include "Net/UnrealNetwork.h"
+#include "ClockbaitGameState.h"
 
 AClockbaitGameMode::AClockbaitGameMode()
 {
@@ -67,7 +67,7 @@ void AClockbaitGameMode::NotifyPlayerCaught(APawn* CaughtPawn)
 
 void AClockbaitGameMode::TravelToCurrentLevel()
 {
-	GetWorld()->ServerTravel("L_Main");
+	GetWorld()->ServerTravel(TEXT("/Game/MyStuff/Maps/L_Main"));
 }
 
 void AClockbaitGameMode::NotifyPlayerReady(APlayerController* PC)

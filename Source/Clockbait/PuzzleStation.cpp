@@ -35,7 +35,6 @@ void APuzzleStation::Confirm()
 	}
 
 	bSolved = CheckSolution();
-
 	if (!bSolved)
 	{
 		if (PuzzleController)
