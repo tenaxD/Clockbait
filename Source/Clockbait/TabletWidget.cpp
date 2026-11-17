@@ -17,6 +17,7 @@
 #include "Components/CanvasPanel.h"
 #include "AlarmClock.h"
 #include "PuzzleStation.h"
+#include "PuzzleDecal.h"
 #include "Components/CanvasPanelSlot.h"
 
 
@@ -54,6 +55,14 @@ void UTabletWidget::NativeConstruct()
 			Stations.Add(Station);
 		}
 	}
+
+	OutActors.Empty();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APuzzleDecal::StaticClass(), OutActors);
+	for (AActor* Actor : OutActors) {
+		if (APuzzleDecal* Decal = Cast<APuzzleDecal>(Actor)) {
+			Decals.Add(Decal);
+		}
+	}
 }
 
 void UTabletWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -78,20 +87,22 @@ void UTabletWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (!GetWorld()->GetGameState()) return;
 
 	APawn* Partner{ nullptr };
+	bool bPartnerInRoomLocal{};
 	const TArray<APlayerState*>& Players = GetWorld()->GetGameState()->PlayerArray;
-	for (auto& Player : Players) {
-		if (Player == LocalPawn->GetPlayerState()) continue;
-		Partner = Player->GetPawn();
+	for (auto& PlayerState : Players) {
+		if (PlayerState == LocalPawn->GetPlayerState()) continue;
+		Partner = PlayerState->GetPawn();
 		break;
 	}
 
 	for (auto& Room : Rooms) {
 		if (!Room) continue;
-		if (Room->IsPawnInRoom(LocalPawn)) {
+		if (!Room->IsPawnInRoom(LocalPawn)) {
 			if (Room != BuiltForRoom) {
 				BuildStaticMarkers(Room);
 			}
-
+		}
+		if (Room->IsPawnInRoom(LocalPawn)) {
 			FVector Loc = LocalPawn->GetActorLocation();
 			OwnPos = CalculatePositionOnMap(Loc, Room);
 
@@ -100,6 +111,10 @@ void UTabletWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 			OwnMarker->SetVisibility(ESlateVisibility::HitTestInvisible);
 		}
 		if (Room->IsPawnInRoom(Partner)) {
+			bPartnerInRoomLocal = true;
+			if (!bPartnerInRoom) {
+				bSkipInterp = true;
+			}
 			FVector Loc = Partner->GetActorLocation();
 			if (AClockbaitGameState* GameState = GetWorld()->GetGameState<AClockbaitGameState>()) {
 				for (const FClockbaitRoomAIState& State : GameState->RoomAIStates) {
@@ -123,7 +138,7 @@ void UTabletWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 							PartnerEntityMarker->SetColorAndOpacity(EntityPatrolColor);
 							break;
 						}
-						
+
 						PartnerEntityPos = CalculatePositionOnMap(EntityLoc, Room);
 						if (UCanvasPanelSlot* MarkerSlot = Cast<UCanvasPanelSlot>(PartnerEntityMarker->Slot))
 						{
@@ -148,6 +163,7 @@ void UTabletWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 			PartnerMarker->SetRenderTransformAngle(MapAngleFromActor(Partner));
 		}
 	}
+	bPartnerInRoom = bPartnerInRoomLocal;
 }
 
 
@@ -223,6 +239,10 @@ void UTabletWidget::BuildStaticMarkers(AClockbaitRoomVolume* Room)
 		if (!Station || !RoomBox.IsInside(Station->GetActorLocation())) continue;
 		AddStaticMarker(Canvas, Station->MapIcon, Station, Room, Station->MapIconSize,
 			MapAngleFromActor(Station) + Station->MapIconAngleOffset);
+	}
+	for (APuzzleDecal* Decal : Decals) {
+		if (!Decal || !RoomBox.IsInside(Decal->GetActorLocation())) continue;
+		AddStaticMarker(Canvas, Decal->DecalMarkerTexture, Decal, Room, StaticMarkerSize, 0.0f);
 	}
 	BuiltForRoom = Room;
 }

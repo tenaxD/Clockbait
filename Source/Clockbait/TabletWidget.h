@@ -44,6 +44,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Tablet")
 	TArray<class APuzzleStation*> Stations;
 
+	UPROPERTY(VisibleAnywhere, Category = "Tablet")
+	TArray<class APuzzleDecal*> Decals;
+
 	FVector2D OwnPos = FVector2D::ZeroVector;
 
 	FVector2D PartnerPos = FVector2D::ZeroVector;
@@ -53,6 +56,8 @@ protected:
 	FVector2D CurrentEntityPosition = FVector2D::ZeroVector;
 
 	bool bSkipInterp{ true };
+
+	bool bPartnerInRoom{};
 
 	FVector2D MapSize{ 600.0f, 800.0f }; //set in tick so this value might be inacurrate
 

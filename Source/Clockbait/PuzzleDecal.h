@@ -33,6 +33,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Clue")
 	TMap<EPuzzleColor, FLinearColor> Colors;
 
+	UPROPERTY(EditAnywhere, Category = "Clue")
+	UTexture2D* DecalMarkerTexture;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
